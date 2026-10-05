@@ -442,8 +442,8 @@
       "4": { "start": { "line": 25, "column": 58 }, "end": { "line": 25, "column": 95 } },
       "5": { "start": { "line": 27, "column": 29 }, "end": { "line": 28, "column": 60 } },
       "6": { "start": { "line": 28, "column": 2 }, "end": { "line": 28, "column": 60 } },
-      "7": { "start": { "line": 30, "column": 27 }, "end": { "line": 30, "column": 86 } },
-      "8": { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 86 } }
+      "7": { "start": { "line": 30, "column": 27 }, "end": { "line": 30, "column": 89 } },
+      "8": { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 89 } }
     },
     "fnMap": {
       "0": {
@@ -467,25 +467,15 @@
       "3": {
         "name": "(anonymous_3)",
         "decl": { "start": { "line": 30, "column": 27 }, "end": { "line": 30, "column": 28 } },
-        "loc": { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 86 } },
+        "loc": { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 89 } },
         "line": 30
       }
     },
-    "branchMap": {
-      "0": {
-        "loc": { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 86 } },
-        "type": "binary-expr",
-        "locations": [
-          { "start": { "line": 30, "column": 49 }, "end": { "line": 30, "column": 80 } },
-          { "start": { "line": 30, "column": 84 }, "end": { "line": 30, "column": 86 } }
-        ],
-        "line": 30
-      }
-    },
+    "branchMap": {},
     "s": { "0": 3, "1": 3, "2": 9, "3": 3, "4": 2, "5": 3, "6": 6, "7": 3, "8": 3 },
     "f": { "0": 9, "1": 2, "2": 6, "3": 3 },
-    "b": { "0": [3, 0] },
+    "b": {},
     "_coverageSchema": "1a1c01bbd47fc00a2c39e90264f33305004495a9",
-    "hash": "6a3be2196f472e661eda14aa5062bceaaf2ada23"
+    "hash": "e8010655c51ae9f3d6c241a399537a8a3d5f59bf"
   }
 }

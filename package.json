@@ -48,6 +48,7 @@
     "jest-expo": "~57.0.5",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
+    "sharp": "^0.35.5",
     "test-renderer": "1.2",
     "typescript": "~6.0.3"
   },
@@ -64,7 +65,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "doctor": "npx expo-doctor"
+    "doctor": "npx expo-doctor",
+    "assets:crop": "node scripts/crop-mockup-assets.mjs"
   },
   "private": true
 }

@@ -2,6 +2,8 @@ const { defineConfig, globalIgnores } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
 const prettierConfig = require('eslint-config-prettier/flat');
 const boundaries = require('eslint-plugin-boundaries');
+const testingLibrary = require('eslint-plugin-testing-library');
+const globals = require('globals');
 
 const SAME_MODULE = { module: '{{ from.element.captured.module }}' };
 const UI_RUNTIME = [
@@ -30,6 +32,10 @@ const ANYTHING = [
 module.exports = defineConfig([
   globalIgnores(['dist/*', '.expo/*', 'docs/*', 'android/*', 'ios/*']),
   expoConfig,
+  {
+    files: ['*.js', 'scripts/**/*.{js,mjs}'],
+    languageOptions: { globals: globals.node },
+  },
   {
     settings: {
       'import/resolver': { typescript: { alwaysTryTypes: true } },
@@ -144,6 +150,22 @@ module.exports = defineConfig([
         },
       ],
     },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: __dirname },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.test.{ts,tsx}'],
+    ...testingLibrary.configs['flat/react'],
+    settings: { 'testing-library/utils-module': '@testing-library/react-native' },
   },
   prettierConfig,
 ]);

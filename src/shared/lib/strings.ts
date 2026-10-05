@@ -2,6 +2,7 @@ export const STRINGS = {
   app: {
     name: 'Portal Citas',
     subtitle: 'Control de Garita',
+    loading: 'Cargando',
     version: (version: string) => `v${version}`,
   },
   common: {

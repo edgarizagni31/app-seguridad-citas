@@ -1,5 +1,8 @@
 module.exports = {
   preset: 'jest-expo',
+  // Fuerza la implementación JS de worklets (Reanimated 4) en lugar de la nativa
+  resolver: 'react-native-worklets/jest/resolver',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.{ts,tsx}'],
   moduleNameMapper: {

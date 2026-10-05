@@ -38,16 +38,15 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: appId,
     supportsTablet: false,
-    icon: './assets/expo.icon',
     infoPlist: { ITSAppUsesNonExemptEncryption: false },
   },
   android: {
     package: appId,
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#00843D',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
-      monochromeImage: './assets/images/android-icon-monochrome.png',
+      monochromeImage: './assets/images/android-icon-foreground.png',
     },
     predictiveBackGestureEnabled: false,
   },
@@ -56,9 +55,9 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#208AEF',
-        image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        backgroundColor: '#0F172A',
+        image: './assets/images/logo-ransa360-white.png',
+        imageWidth: 200,
       },
     ],
     [

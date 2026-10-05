@@ -89,8 +89,31 @@ async function buildLogos() {
   await sharp(greenToWhite(color), { raw }).png().toFile(`${OUTPUT}/logo-ransa360-white.png`);
 }
 
+const BRAND_GREEN = '#00843D';
+const ICON_SIZE = 1024;
+
+// Ícono provisional: logo blanco centrado sobre el verde de marca
+async function buildIcons() {
+  const logo = await sharp(`${OUTPUT}/logo-ransa360-white.png`).resize({ width: 760 }).toBuffer();
+  const canvas = (background) =>
+    sharp({ create: { width: ICON_SIZE, height: ICON_SIZE, channels: 4, background } });
+
+  await canvas(BRAND_GREEN)
+    .composite([{ input: logo, gravity: 'center' }])
+    .png()
+    .toFile(`${OUTPUT}/icon.png`);
+
+  const adaptiveLogo = await sharp(logo).resize({ width: 560 }).toBuffer();
+  await canvas({ r: 0, g: 0, b: 0, alpha: 0 })
+    .composite([{ input: adaptiveLogo, gravity: 'center' }])
+    .png()
+    .toFile(`${OUTPUT}/android-icon-foreground.png`);
+  await canvas(BRAND_GREEN).png().toFile(`${OUTPUT}/android-icon-background.png`);
+}
+
 await mkdir(OUTPUT, { recursive: true });
 await crop(CROPS.heroGate).jpeg({ quality: 88, mozjpeg: true }).toFile(`${OUTPUT}/hero-gate.jpg`);
 await buildIllustration();
 await buildLogos();
+await buildIcons();
 console.warn(`Assets generados en ${OUTPUT}`);

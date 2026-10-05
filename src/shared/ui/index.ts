@@ -3,6 +3,7 @@ export { AppText } from './components/app-text';
 export { AuthSheet } from './components/auth-sheet';
 export { Avatar, initialsOf } from './components/avatar';
 export { Banner, type BannerTone } from './components/banner';
+export { BrandSplash } from './components/brand-splash';
 export { Button } from './components/button';
 export { EmptyState } from './components/empty-state';
 export { ErrorFallback } from './components/error-fallback';

@@ -17,6 +17,7 @@ export const colors = {
   borderStrong: '#CBD5E1',
   overlay: 'rgba(15, 23, 42, 0.55)',
   translucentDark: 'rgba(15, 23, 42, 0.6)',
+  cameraBackground: '#000000',
   success: '#13773A',
   successTint: '#E8F5EE',
   warning: '#B45309',

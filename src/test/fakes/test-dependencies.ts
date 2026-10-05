@@ -1,6 +1,7 @@
-import type { Dependencies } from '@/core/di';
-import type { Logger } from '@/shared/domain';
+import type { AuthUseCases, Dependencies } from '@/core/di';
+import { ok, type Logger } from '@/shared/domain';
 
+import { buildSession } from '../factories/auth';
 import { createFixedClock } from './fixed-clock';
 
 export const silentLogger: Logger = {
@@ -10,11 +11,20 @@ export const silentLogger: Logger = {
   error: jest.fn(),
 };
 
+export const createFakeAuthUseCases = (overrides: Partial<AuthUseCases> = {}) => ({
+  login: jest.fn(async () => ok(buildSession())),
+  restoreSession: jest.fn(async () => ok(null)),
+  refreshSession: jest.fn(async () => ok(buildSession())),
+  logout: jest.fn(async () => ok(undefined)),
+  ...overrides,
+});
+
 export function createTestDependencies(overrides: Partial<Dependencies> = {}): Dependencies {
   return {
     config: { appVersion: '1.0.0', timeZone: 'America/El_Salvador', isDemoAuth: false },
     logger: silentLogger,
     clock: createFixedClock(),
+    auth: createFakeAuthUseCases(),
     ...overrides,
   };
 }

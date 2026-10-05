@@ -25,3 +25,25 @@ describe('createContainer', () => {
     expect(createContainer(env({ authProvider: 'mock' })).config.isDemoAuth).toBe(true);
   });
 });
+
+describe('createContainer · auth', () => {
+  it.each(['r360', 'mock'] as const)('expone los casos de uso de sesión con %s', (authProvider) => {
+    const { auth } = createContainer(env({ authProvider }));
+
+    expect(Object.keys(auth).sort()).toEqual([
+      'login',
+      'logout',
+      'refreshSession',
+      'restoreSession',
+    ]);
+  });
+
+  it('valida credenciales antes de llamar al proveedor', async () => {
+    const { auth } = createContainer(env({ authProvider: 'mock' }));
+
+    expect(await auth.login('no-es-correo', 'x')).toEqual({
+      ok: false,
+      error: { type: 'invalid-email' },
+    });
+  });
+});

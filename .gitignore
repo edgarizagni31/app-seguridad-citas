@@ -55,3 +55,6 @@ GoogleService-Info.plist
 # local (no versionar)
 docs/
 .claude/
+
+# reportes de pruebas
+coverage/

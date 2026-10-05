@@ -30,7 +30,7 @@ const ANYTHING = [
 ];
 
 module.exports = defineConfig([
-  globalIgnores(['dist/*', '.expo/*', 'docs/*', 'android/*', 'ios/*']),
+  globalIgnores(['dist/*', '.expo/*', 'docs/*', 'android/*', 'ios/*', 'coverage/*']),
   expoConfig,
   {
     files: ['*.js', 'scripts/**/*.{js,mjs}'],

@@ -51,3 +51,7 @@ example
 google-services.json
 GoogleService-Info.plist
 *.keystore
+
+# local (no versionar)
+docs/
+.claude/

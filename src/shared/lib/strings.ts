@@ -73,7 +73,7 @@ export const STRINGS = {
     readOn: (date: string, time: string) => `Leído ${date} ${time}`,
     code: 'Código',
     plate: 'Placa',
-    suffix: 'Placa o documento',
+    document: 'Documento',
     passCode: 'Código de pase',
     rawContent: 'Contenido leído',
     types: {

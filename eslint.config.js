@@ -97,7 +97,7 @@ module.exports = defineConfig([
             canImport('test', ANYTHING),
             canImport('app', [el(['app', 'module', 'core', 'shared-ui', 'shared-lib'])]),
             canImport('core', [
-              el(['core', 'core-di', 'module', 'application', 'infrastructure']),
+              el(['core', 'core-di', 'module', 'domain', 'application', 'infrastructure']),
               el(['shared-domain', 'shared-lib', 'shared-infrastructure', 'shared-ui']),
             ]),
             canImport('core-di', [el(['core-di', 'domain', 'shared-domain'])]),

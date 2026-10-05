@@ -1,56 +1,89 @@
-# Welcome to your Expo app 👋
+# Portal Citas · Control de Garita
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App móvil (Android e iOS) para el personal de seguridad en la garita de los almacenes de Ransa. Permite iniciar sesión con la cuenta de Ransa 360 y escanear los códigos QR de las unidades de transporte, los vouchers y los pases de visitante.
 
-## Get started
+**Stack:** Expo SDK 57, React Native 0.86, TypeScript estricto, Expo Router, Zustand, Zod y Jest + Testing Library.
 
-1. Install dependencies
+## Requisitos (Windows)
 
-   ```bash
-   npm install
-   ```
+| Herramienta                  | Uso                                                              |
+| ---------------------------- | ---------------------------------------------------------------- |
+| Node.js 22 LTS               | Obligatorio                                                      |
+| Git                          | Obligatorio                                                      |
+| Expo Go (Android y/o iPhone) | Para probar sin compilar                                         |
+| Android Studio + JDK 17      | Solo para emulador o builds locales (`ANDROID_HOME` configurado) |
+| Cuenta de Expo               | Solo para builds con EAS                                         |
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Inicio rápido
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env          # ajustar valores si hace falta
+npm start                     # abre Metro; escanear el QR con Expo Go
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- **Android:** abre Expo Go y escanea el QR que muestra la terminal.
+- **iPhone:** escanea el QR con la cámara del teléfono, que lo abre en Expo Go.
+- **Si la red corporativa bloquea la conexión** entre el PC y el teléfono, usa `npx expo start --tunnel`.
 
-### Other setup steps
+## Variables de entorno
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Variable                    | Ejemplo                                           | Descripción                                      |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------------ |
+| `EXPO_PUBLIC_API_URL`       | `https://citascam.qas.ransaaplicaciones.com/api/` | API de Citas                                     |
+| `EXPO_PUBLIC_R360_API_URL`  | `https://api-360v2.qas.ransaaplicaciones.com`     | API de autenticación R360                        |
+| `EXPO_PUBLIC_AUTH_PROVIDER` | `r360` / `mock`                                   | `mock` simula el login (prohibido en producción) |
+| `EXPO_PUBLIC_TIME_ZONE`     | `America/El_Salvador`                             | Zona horaria de la sede                          |
+| `APP_VARIANT`               | `development` / `preview` / `production`          | Nombre, ID y _scheme_ de la app                  |
 
-## Learn more
+Las variables `EXPO_PUBLIC_*` quedan dentro del bundle: **nunca pongas secretos en ellas**. La configuración se valida al arrancar; si algo falta o es inválido, la app falla con un mensaje claro.
 
-To learn more about developing your project with Expo, look at the following resources:
+### Usuarios demo (`EXPO_PUBLIC_AUTH_PROVIDER=mock`)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+La contraseña de todos es `demo123`.
 
-## Join the community
+| Correo                 | Resultado                                      |
+| ---------------------- | ---------------------------------------------- |
+| `seguridad@demo.ransa` | Ingresa con rol de seguridad                   |
+| `cliente@demo.ransa`   | Ingresa sin rol de seguridad (acceso denegado) |
+| `cambio@demo.ransa`    | Debe cambiar la contraseña                     |
+| `sinred@demo.ransa`    | Simula un fallo de red                         |
 
-Join our community of developers creating universal apps.
+### QR de prueba
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+`npm run qr:generate` genera en `docs/qr-pruebas/` un PNG por caso y un `index.html` para escanearlos desde la pantalla del PC.
+
+## Scripts
+
+| Script                                                      | Descripción                                               |
+| ----------------------------------------------------------- | --------------------------------------------------------- |
+| `npm start`                                                 | Servidor de desarrollo                                    |
+| `npm run android` / `npm run ios`                           | Abre en emulador o simulador                              |
+| `npm test` / `npm run test:watch` / `npm run test:coverage` | Pruebas                                                   |
+| `npm run lint`                                              | ESLint, incluidas las reglas de arquitectura              |
+| `npm run typecheck`                                         | TypeScript                                                |
+| `npm run format` / `npm run format:check`                   | Prettier                                                  |
+| `npm run doctor`                                            | Diagnóstico de Expo                                       |
+| `npm run assets:crop`                                       | Regenera las imágenes desde los mockups (`docs/mockups/`) |
+| `npm run qr:generate`                                       | Genera los QR de prueba                                   |
+
+## Arquitectura
+
+Monolito modular por dominios + Clean/Hexagonal + MVVM. Ver [CONTRIBUTING.md](CONTRIBUTING.md).
+
+```
+src/app/            Rutas (Expo Router), solo re-exportan pantallas
+src/modules/auth/   Sesión R360: dominio, casos de uso, adaptadores, pantallas
+src/modules/access-control/   Lectura e interpretación de QR en garita
+src/shared/         Kernel común: Result, logger, cliente HTTP, design system
+src/core/           Inyección de dependencias y composition root
+```
+
+## Builds con EAS (pasos manuales)
+
+1. `npx eas-cli@latest login`
+2. `npx eas-cli@latest init` (vincula el proyecto y agrega `extra.eas.projectId`)
+3. `npx eas-cli@latest env:create` para las variables de cada ambiente
+4. `npx eas-cli@latest build --profile development|preview|production`
+
+Los perfiles definen `APP_VARIANT`, así que las variantes Dev, QA y Producción pueden convivir instaladas en el mismo teléfono.

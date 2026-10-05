@@ -4,6 +4,7 @@ export const buildSessionUser = (overrides: Partial<SessionUser> = {}): SessionU
   id: 'user-1',
   name: 'Carlos Méndez',
   firstName: 'Carlos',
+  lastName: 'Méndez',
   email: 'carlos.mendez@empresa.com',
   roles: ['PACCESO_ASEGURIDAD'],
   ...overrides,

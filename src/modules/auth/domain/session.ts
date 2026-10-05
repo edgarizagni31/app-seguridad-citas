@@ -2,6 +2,7 @@ export type SessionUser = {
   readonly id: string;
   readonly name: string;
   readonly firstName: string;
+  readonly lastName: string;
   readonly email: string;
   readonly roles: readonly string[];
 };

@@ -1,7 +1,14 @@
 import { firstNameOf, isExpired, secondsUntilExpiry, shouldRefresh, type Session } from './session';
 
 const session = (expiresAt: string): Session => ({
-  user: { id: '1', name: 'Carlos Méndez', firstName: 'Carlos', email: 'c@e.com', roles: [] },
+  user: {
+    id: '1',
+    name: 'Carlos Méndez',
+    firstName: 'Carlos',
+    lastName: 'Méndez',
+    email: 'c@e.com',
+    roles: [],
+  },
   tokens: { idToken: 'id', refreshToken: 'refresh' },
   expiresAt: new Date(expiresAt),
 });

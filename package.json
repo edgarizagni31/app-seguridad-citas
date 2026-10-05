@@ -3,6 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
+    "date-fns": "^4.4.0",
     "expo": "~57.0.26",
     "expo-build-properties": "~57.0.22",
     "expo-camera": "~57.0.6",

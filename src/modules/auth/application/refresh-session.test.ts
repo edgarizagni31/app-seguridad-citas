@@ -49,3 +49,17 @@ describe('logout', () => {
     expect(sessionStorage.current()).toBeNull();
   });
 });
+
+describe('fallos de almacenamiento', () => {
+  it('no devuelve sesión si no se pudo guardar', async () => {
+    const sessionStorage = createInMemorySessionStorage();
+    sessionStorage.save.mockResolvedValueOnce(err({ type: 'storage' }));
+    const run = refreshSession({
+      authGateway: createFakeAuthGateway(),
+      tokenDecoder: createFakeTokenDecoder(),
+      sessionStorage,
+    });
+
+    expect(await run(buildSession())).toEqual(err({ type: 'storage' }));
+  });
+});

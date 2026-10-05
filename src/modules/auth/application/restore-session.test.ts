@@ -86,3 +86,12 @@ describe('restoreSession', () => {
     expect(await run()).toEqual(err({ type: 'storage' }));
   });
 });
+
+describe('restoreSession con fallo al descartar', () => {
+  it('propaga el error si no puede borrar una sesión inválida', async () => {
+    const { run, sessionStorage } = setup({ stored: buildTokens({ idToken: 'malformed' }) });
+    sessionStorage.clear.mockResolvedValueOnce(err({ type: 'storage' }));
+
+    expect(await run()).toEqual(err({ type: 'storage' }));
+  });
+});

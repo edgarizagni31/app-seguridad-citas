@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import type { Dependencies } from '@/core/di';
+import { readQr } from '@/modules/access-control/application';
 import { login, logout, refreshSession, restoreSession } from '@/modules/auth/application';
 import {
   createMockAuthGateway,
@@ -45,6 +46,9 @@ export function createContainer(env: Env): Dependencies {
       restoreSession: restoreSession(authDeps),
       refreshSession: refreshSession(authDeps),
       logout: logout(authDeps),
+    },
+    accessControl: {
+      readQr: readQr({ clock }),
     },
   };
 }

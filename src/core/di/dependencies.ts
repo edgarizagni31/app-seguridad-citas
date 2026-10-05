@@ -1,3 +1,4 @@
+import type { ScanRecord } from '@/modules/access-control/domain';
 import type { AuthError, CredentialsError, Session } from '@/modules/auth/domain';
 import type { Clock, Logger, Result } from '@/shared/domain';
 
@@ -17,9 +18,14 @@ export type AuthUseCases = {
   readonly logout: () => Promise<Result<void, AuthError>>;
 };
 
+export type AccessControlUseCases = {
+  readonly readQr: (rawContent: string) => ScanRecord;
+};
+
 export type Dependencies = {
   readonly config: AppConfig;
   readonly logger: Logger;
   readonly clock: Clock;
   readonly auth: AuthUseCases;
+  readonly accessControl: AccessControlUseCases;
 };

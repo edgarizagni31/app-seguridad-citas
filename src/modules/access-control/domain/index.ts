@@ -38,9 +38,17 @@ export {
   markVisitor,
   startDraft,
   type ArrivalStatus,
+  type ConfirmEntryError,
   type EntryDraft,
   type EntryError,
   type EntryVisitor,
   type NewVisitor,
   type VehicleEntryRecord,
 } from './vehicle-entry';
+export {
+  ENTRY_OUTBOX_KIND,
+  toConfirmEntryRequest,
+  type ConfirmEntryRequest,
+  type EntryRepository,
+  type StoredEntry,
+} from './entry-ports';

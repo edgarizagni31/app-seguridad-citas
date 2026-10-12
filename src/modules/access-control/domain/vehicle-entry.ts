@@ -47,6 +47,8 @@ export type EntryError =
   | { readonly type: 'blocked-visitor' }
   | { readonly type: 'incomplete' };
 
+export type ConfirmEntryError = EntryError | { readonly type: 'storage' };
+
 export function startDraft(validation: UnitValidation): EntryDraft {
   const { appointment, vehicle, qr } = validation;
   return {

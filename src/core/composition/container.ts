@@ -2,9 +2,19 @@ import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import type { Dependencies } from '@/core/di';
-import { readQr, validateUnit, validateVisitor } from '@/modules/access-control/application';
 import {
+  confirmEntry,
+  createEntrySyncHandler,
+  entryHistoryFrom,
+  entryLogFrom,
+  readQr,
+  validateUnit,
+  validateVisitor,
+} from '@/modules/access-control/application';
+import {
+  ACCESS_MIGRATIONS,
   createMockAccessGateway,
+  createSqliteEntryRepository,
   es256VehicleQrVerifier,
 } from '@/modules/access-control/infrastructure';
 import { login, logout, refreshSession, restoreSession } from '@/modules/auth/application';
@@ -60,7 +70,7 @@ export function createContainer(env: Env): AppContainer {
   const changes = createChangeBus();
   const db = createLazyDatabase(
     () => openExpoSqliteDatabase(),
-    [...SYNC_MIGRATIONS, ...SITES_MIGRATIONS],
+    [...SYNC_MIGRATIONS, ...SITES_MIGRATIONS, ...ACCESS_MIGRATIONS],
   );
   const today = () => toIsoDate(clock.now(), env.timeZone);
 
@@ -81,9 +91,18 @@ export function createContainer(env: Env): AppContainer {
     clock,
   };
 
+  // Backend sin estos endpoints todavía: mock hasta implementar el contrato (docs/CONTRATO-API-*)
+  const accessGateway = createMockAccessGateway({ isOnline: connectivity.isOnline });
+  const entryRepo = createSqliteEntryRepository({
+    db,
+    changes,
+    clock,
+    createId: Crypto.randomUUID,
+  });
+
   const sync = createSyncEngine({
     store: createOutboxStore(db),
-    handlers: [],
+    handlers: [createEntrySyncHandler({ gateway: accessGateway, repo: entryRepo })],
     clock,
     logger,
     changes,
@@ -91,21 +110,34 @@ export function createContainer(env: Env): AppContainer {
     createId: Crypto.randomUUID,
   });
 
-  // Backend sin estos endpoints todavía: mock hasta implementar el contrato (docs/CONTRATO-API-*)
   const shiftStore = createSqliteShiftStore(db, changes);
   const sitesDeps = {
     ...createMockSitesGateways({ clock, isOnline: connectivity.isOnline }),
     store: shiftStore,
     today,
   };
-  const closeShift = endShift(sitesDeps);
   const validationDeps = {
     shift: shiftStore,
+    entries: entryLogFrom(entryRepo),
     verifier: es256VehicleQrVerifier,
-    gateway: createMockAccessGateway({ isOnline: connectivity.isOnline }),
+    gateway: accessGateway,
     isOnline: connectivity.isOnline,
     clock,
   };
+  // Al cerrar el turno se descartan el paquete y los registros ya sincronizados
+  const clearShiftData = async () => {
+    await entryRepo.clearSynced();
+  };
+  const withCleanup =
+    <T>(task: () => Promise<T>) =>
+    async () => {
+      const result = await task();
+      await clearShiftData().catch((error: unknown) =>
+        logger.error('No se pudieron limpiar los registros del turno', { error: String(error) }),
+      );
+      return result;
+    };
+  const closeShift = withCleanup(endShift(sitesDeps));
   const signOut = logout(authDeps);
 
   const dependencies: Dependencies = {
@@ -119,8 +151,7 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
-    // Los módulos de ingreso e inspección registran aquí sus fuentes
-    history: mergeHistory([]),
+    history: mergeHistory([entryHistoryFrom(entryRepo)]),
     auth: {
       login: login(authDeps),
       restoreSession: restoreSession(authDeps),
@@ -136,13 +167,20 @@ export function createContainer(env: Env): AppContainer {
       readQr: readQr({ clock }),
       validateUnit: validateUnit(validationDeps),
       validateVisitor: validateVisitor(validationDeps),
+      confirmEntry: confirmEntry({
+        repo: entryRepo,
+        clock,
+        createId: Crypto.randomUUID,
+        requestSync: sync.requestSync,
+        logger,
+      }),
     },
     sites: {
       listSites: listSites(sitesDeps),
       shiftStatus: shiftStatus(sitesDeps),
       startShift: startShift(sitesDeps),
       endShift: closeShift,
-      changeSite: changeSite(sitesDeps),
+      changeSite: withCleanup(changeSite(sitesDeps)),
     },
   };
 

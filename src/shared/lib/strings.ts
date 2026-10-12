@@ -74,6 +74,13 @@ export const STRINGS = {
     logoutAnyway: 'Cerrar sesión igualmente',
     cancel: 'Cancelar',
   },
+  entry: {
+    attentionTitle: (plate: string) => `Ingreso ${plate}`,
+    historySubtitle: (entering: number, notArriving: number) =>
+      notArriving > 0
+        ? `${entering} ingresaron · ${notArriving} no llegaron`
+        : `${entering} ${entering === 1 ? 'visitante ingresó' : 'visitantes ingresaron'}`,
+  },
   inspections: {
     title: 'Inspecciones vehiculares',
     comingSoon: 'Las inspecciones del día aparecerán aquí.',

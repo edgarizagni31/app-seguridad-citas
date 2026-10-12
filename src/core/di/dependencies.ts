@@ -1,7 +1,10 @@
 import type {
+  ConfirmEntryError,
+  EntryDraft,
   ScanRecord,
   UnitValidation,
   UnitValidationError,
+  VehicleEntryRecord,
   VisitorDocument,
   VisitorValidation,
   VisitorValidationError,
@@ -41,6 +44,9 @@ export type AccessControlUseCases = {
   readonly validateVisitor: (
     visitor: VisitorDocument & { readonly voucherId: string },
   ) => Promise<Result<VisitorValidation, VisitorValidationError>>;
+  readonly confirmEntry: (
+    draft: EntryDraft,
+  ) => Promise<Result<VehicleEntryRecord, ConfirmEntryError>>;
 };
 
 export type SitesUseCases = {

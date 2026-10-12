@@ -1,3 +1,4 @@
+import type { ConfirmEntryRequest } from './entry-ports';
 import type { VisitorDocument } from './visitor-policy';
 import type { Result } from '@/shared/domain';
 
@@ -12,5 +13,10 @@ export interface AccessValidationGateway {
   validateUnit(vehicleQrToken: string): Promise<Result<ServerVerdict, AccessGatewayError>>;
   validateVisitor(
     input: VisitorDocument & { readonly voucherId: string },
+  ): Promise<Result<ServerVerdict, AccessGatewayError>>;
+  // idempotencyKey evita duplicar el ingreso si se reintenta el envío
+  confirmEntry(
+    request: ConfirmEntryRequest,
+    idempotencyKey: string,
   ): Promise<Result<ServerVerdict, AccessGatewayError>>;
 }

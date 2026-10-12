@@ -1,6 +1,6 @@
 import type { AccessValidationGateway, ServerVerdict } from '../domain';
 import { es256VehicleQrVerifier } from '../infrastructure';
-import { err, ok, type ShiftSnapshot } from '@/shared/domain';
+import { err, ok, type LocalEntry, type ShiftSnapshot } from '@/shared/domain';
 import { buildDemoSnapshot, signVehicleQr } from '@/shared/infrastructure/demo';
 import { buildVehicleQrClaims } from '@/test/factories/vehicle-qr';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
@@ -13,6 +13,7 @@ const SNAPSHOT = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-
 function setup({
   snapshot = SNAPSHOT as ShiftSnapshot | null,
   online = true,
+  localEntries = [] as LocalEntry[],
   verdict = ok<ServerVerdict>({ type: 'accepted' }) as Awaited<
     ReturnType<AccessValidationGateway['validateUnit']>
   >,
@@ -20,9 +21,11 @@ function setup({
   const gateway = {
     validateUnit: jest.fn(async () => verdict),
     validateVisitor: jest.fn(async () => verdict),
+    confirmEntry: jest.fn(async () => verdict),
   };
   const deps = {
     shift: { current: async () => snapshot },
+    entries: { tables: [], list: async () => localEntries },
     verifier: es256VehicleQrVerifier,
     gateway,
     isOnline: async () => online,
@@ -106,6 +109,35 @@ describe('validateUnit', () => {
     expect(await validateUnit(entered)).toMatchObject(
       err({ type: 'unit', rejection: { type: 'AlreadyEntered', plate: 'XYZ-789' } }),
     );
+  });
+});
+
+describe('validateUnit · ingresos confirmados sin red', () => {
+  const entered = (visitorIds: string[]): LocalEntry => ({
+    vehicleId: 'veh-abc-123',
+    enteredAt: '2026-10-05T16:40:00.000Z',
+    visitorIds,
+  });
+
+  it('una unidad ingresada en este dispositivo no vuelve a ingresar', async () => {
+    const { validateUnit } = setup({
+      localEntries: [entered(['vis-luis', 'vis-mario', 'vis-pedro'])],
+    });
+
+    expect(await validateUnit(token())).toMatchObject(
+      err({ type: 'unit', rejection: { type: 'AlreadyEntered', plate: 'ABC-123' } }),
+    );
+  });
+
+  it('si faltó alguien, el re-escaneo abre la llegada tardía', async () => {
+    const { validateUnit } = setup({ localEntries: [entered(['vis-luis', 'vis-mario'])] });
+
+    const result = await validateUnit(token());
+
+    expect(result).toMatchObject({ ok: true, value: { mode: 'late-arrival' } });
+    expect(result.ok && result.value.pendingVisitors.map((visitor) => visitor.id)).toEqual([
+      'vis-pedro',
+    ]);
   });
 });
 

@@ -31,3 +31,49 @@ describe('createMockAccessGateway', () => {
     ).toMatchObject(ok({ type: 'rejected', reason: 'VisitorBlacklisted' }));
   });
 });
+
+describe('createMockAccessGateway · confirmEntry', () => {
+  const request = {
+    entryId: 'entry-1',
+    appointmentId: 'apt-delosi',
+    voucherId: 'voucher-093',
+    vehicleId: 'veh-abc-123',
+    plate: 'ABC-123',
+    confirmedAt: '2026-10-05T16:44:00.000Z',
+    visitors: [
+      {
+        visitorId: null,
+        name: 'Raúl Pineda',
+        documentType: 'DUI' as const,
+        documentNumber: '07777777-7',
+        role: 'HELPER' as const,
+        status: 'ARRIVED' as const,
+        added: true,
+      },
+    ],
+  };
+
+  it('rechaza el ingreso de alguien bloqueado en el servidor', async () => {
+    expect(await gateway(true).confirmEntry(request, 'entry-1')).toMatchObject(
+      ok({ type: 'rejected', reason: 'VisitorBlacklisted' }),
+    );
+  });
+
+  it('es idempotente y no rechaza a quien no ingresa', async () => {
+    const mock = gateway(true);
+    const notArrived = {
+      ...request,
+      visitors: request.visitors.map((visitor) => ({
+        ...visitor,
+        status: 'NOT_ARRIVED' as const,
+      })),
+    };
+
+    expect(await mock.confirmEntry(notArrived, 'entry-1')).toEqual(ok({ type: 'accepted' }));
+    expect(await mock.confirmEntry(notArrived, 'entry-1')).toEqual(ok({ type: 'accepted' }));
+  });
+
+  it('sin red es error de red', async () => {
+    expect(await gateway(false).confirmEntry(request, 'entry-1')).toEqual(err({ type: 'network' }));
+  });
+});

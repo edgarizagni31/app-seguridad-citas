@@ -14,10 +14,19 @@ import {
   type VisitorValidation,
   type VisitorValidationError,
 } from '../domain';
-import { err, ok, type Clock, type Result, type ShiftReader } from '@/shared/domain';
+import {
+  applyEntries,
+  err,
+  ok,
+  type Clock,
+  type EntryLog,
+  type Result,
+  type ShiftReader,
+} from '@/shared/domain';
 
 export type ValidationDeps = {
   readonly shift: ShiftReader;
+  readonly entries: EntryLog;
   readonly verifier: VehicleQrVerifier;
   readonly gateway: AccessValidationGateway;
   readonly isOnline: () => Promise<boolean>;
@@ -27,8 +36,10 @@ export type ValidationDeps = {
 export const validateUnit =
   (deps: ValidationDeps) =>
   async (token: string): Promise<Result<UnitValidation, UnitValidationError>> => {
-    const snapshot = await deps.shift.current();
-    if (!snapshot) return err({ type: 'no-shift' });
+    const baseline = await deps.shift.current();
+    if (!baseline) return err({ type: 'no-shift' });
+    // Los ingresos confirmados offline todavía no están en el paquete del día
+    const snapshot = applyEntries(baseline, await deps.entries.list());
 
     const now = deps.clock.now();
     const verified = deps.verifier.verify(token, snapshot.qrPublicKey);

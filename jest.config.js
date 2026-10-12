@@ -18,7 +18,7 @@ module.exports = {
   clearMocks: true,
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/app/**', '!src/test/**', '!**/index.ts'],
   coverageThreshold: {
-    './src/modules/*/domain/': { lines: 90, branches: 90 },
-    './src/modules/*/application/': { lines: 90, branches: 90 },
+    './src/modules/*/domain/**/*.ts': { lines: 90, branches: 90 },
+    './src/modules/*/application/**/*.ts': { lines: 90, branches: 90 },
   },
 };

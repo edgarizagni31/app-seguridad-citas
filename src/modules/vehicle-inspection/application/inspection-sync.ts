@@ -28,16 +28,15 @@ export function createInspectionSyncHandler(deps: {
       const { photos, ...request } = requestOf(item.payload);
       const stored = await deps.repo.findById(request.inspectionId);
       // Retoma la subida donde quedó: el servidor es idempotente por hash
-      for (let index = stored?.uploadedPhotos ?? 0; index < photos.length; index += 1) {
-        const pending = photos[index];
-        if (!pending) break;
+      const start = stored?.uploadedPhotos ?? 0;
+      for (const [offset, pending] of photos.slice(start).entries()) {
         const uploaded = await deps.gateway.uploadPhoto({
           inspectionId: request.inspectionId,
           stepId: pending.stepId,
           photo: pending.photo,
         });
         if (!uploaded.ok) return err({ type: 'retryable', cause: uploaded.error.type });
-        await deps.repo.setUploadedPhotos(request.inspectionId, index + 1);
+        await deps.repo.setUploadedPhotos(request.inspectionId, start + offset + 1);
       }
 
       const result = await deps.gateway.submit(request, item.aggregateId);

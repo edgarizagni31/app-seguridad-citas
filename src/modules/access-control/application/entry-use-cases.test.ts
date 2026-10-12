@@ -156,6 +156,8 @@ describe('createEntrySyncHandler', () => {
       message: 'En lista negra.',
     });
     expect(repo.markRejected).toHaveBeenCalledWith('entry-1', 'En lista negra.');
+    await handler.onRejected?.(item, { type: 'rejected', reason: 'VisitorBlacklisted' });
+    expect(repo.markRejected).toHaveBeenLastCalledWith('entry-1', 'VisitorBlacklisted');
     expect(handler.describe(item)).toEqual({ title: 'Ingreso ABC-123' });
   });
 });

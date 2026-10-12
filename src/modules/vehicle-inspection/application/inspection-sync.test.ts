@@ -131,6 +131,28 @@ describe('createInspectionSyncHandler', () => {
   });
 });
 
+describe('createInspectionSyncHandler · casos límite', () => {
+  it('sin registro local sube todas las fotos desde el principio', async () => {
+    const repo = createMemoryInspectionRepository();
+    const gateway = {
+      uploadPhoto: jest.fn(async () => ok(undefined)),
+      submit: jest.fn(async () => ok({ type: 'accepted' as const })),
+    };
+    const handler = createInspectionSyncHandler({ gateway, repo, photos: createFakePhotoStore() });
+
+    expect(await handler.send(item)).toEqual(ok({ type: 'done' }));
+    expect(gateway.uploadPhoto).toHaveBeenCalledTimes(3);
+  });
+
+  it('un rechazo sin mensaje guarda el código del motivo', async () => {
+    const { handler, repo } = setup();
+
+    await handler.onRejected?.(item, { type: 'rejected', reason: 'InspectionClosed' });
+
+    expect(repo.markRejected).toHaveBeenCalledWith('insp-1', 'InspectionClosed');
+  });
+});
+
 describe('statusOf / inspectionHistoryFrom', () => {
   it('traduce el estado local al estado de la lista HSE', () => {
     expect(statusOf(null)).toBeNull();
@@ -144,6 +166,7 @@ describe('statusOf / inspectionHistoryFrom', () => {
       stored(),
       stored({ id: 'insp-2', state: 'observed', syncStatus: 'synced' }),
       stored({ id: 'insp-3', state: 'draft' }),
+      stored({ id: 'insp-4', vehicleId: 'veh-2', finishedAt: null, syncStatus: null }),
     ]);
 
     expect(await inspectionHistoryFrom(repo).list()).toEqual([
@@ -156,6 +179,12 @@ describe('statusOf / inspectionHistoryFrom', () => {
         id: 'insp-2',
         subtitle: 'Observada · DOLLAR CITY',
         syncStatus: 'synced',
+      }),
+      // Sin fecha de cierre ni estado de envío, usa la última actualización y queda pendiente
+      expect.objectContaining({
+        id: 'insp-4',
+        occurredAt: '2026-10-05T17:10:00.000Z',
+        syncStatus: 'pending',
       }),
     ]);
   });

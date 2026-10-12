@@ -9,6 +9,7 @@ import {
   answerInspection,
   capturePhoto,
   cleanupStaleDrafts,
+  discardCapture,
   finishInspection,
   openInspection,
   reportMismatch,
@@ -268,5 +269,72 @@ describe('cleanupStaleDrafts', () => {
     await cleanup({ appointments: [] });
     expect(context.deps.photos.deleteAll).toHaveBeenCalledWith(id);
     expect(context.deps.repo.delete).toHaveBeenCalledWith(id);
+  });
+});
+
+describe('borrado de fotos', () => {
+  it('si no se puede borrar una foto descartada, la respuesta igual se guarda', async () => {
+    const context = setup();
+    const { id } = await opened(context);
+    await context.answer(id, 'has-trailer', { kind: 'yes_no', value: true });
+    await context.capture(id, 'trailer-photo', CAPTURE);
+    context.deps.photos.delete.mockRejectedValueOnce(new Error('bloqueada'));
+
+    const result = await context.answer(id, 'has-trailer', { kind: 'yes_no', value: false });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('una captura descartada en la vista previa se borra sin romper el flujo', async () => {
+    const context = setup();
+    const discard = discardCapture(context.deps);
+
+    await discard(CAPTURE);
+    context.deps.photos.discardCapture.mockRejectedValueOnce(new Error('no existe'));
+    await expect(discard(CAPTURE)).resolves.toBeUndefined();
+
+    expect(context.deps.photos.discardCapture).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('errores de almacenamiento y estados no editables', () => {
+  it('si no se puede crear el borrador informa error de almacenamiento', async () => {
+    const repo = createMemoryInspectionRepository();
+    repo.save.mockRejectedValueOnce(new Error('db'));
+
+    expect(await setup({ repo }).open({ vehicleId: 'veh-mnp-456', inspector: INSPECTOR })).toEqual(
+      err({ type: 'storage' }),
+    );
+  });
+
+  it('si no se puede guardar una respuesta o la observación', async () => {
+    const repo = createMemoryInspectionRepository();
+    const context = setup({ repo });
+    const { id } = await opened(context);
+    repo.save.mockRejectedValueOnce(new Error('db')).mockRejectedValueOnce(new Error('db'));
+
+    expect(await context.answer(id, 'has-trailer', { kind: 'yes_no', value: true })).toEqual(
+      err({ type: 'storage' }),
+    );
+    expect(await context.observe(id, 'Nota')).toEqual(err({ type: 'storage' }));
+  });
+
+  it('una inspección cerrada no acepta fotos ni observaciones', async () => {
+    const context = setup();
+    const { id } = await opened(context);
+    await context.mismatch(id);
+
+    expect(await context.capture(id, 'front-photo', CAPTURE)).toEqual(
+      err({ type: 'not-editable' }),
+    );
+    expect(await context.observe(id, 'Nota')).toEqual(err({ type: 'not-editable' }));
+    expect(context.deps.photos.save).not.toHaveBeenCalled();
+  });
+
+  it('observación o cierre de una inspección inexistente', async () => {
+    const context = setup();
+
+    expect(await context.observe('nope', 'Nota')).toEqual(err({ type: 'not-found' }));
+    expect(await context.finish('nope')).toEqual(err({ type: 'not-found' }));
   });
 });

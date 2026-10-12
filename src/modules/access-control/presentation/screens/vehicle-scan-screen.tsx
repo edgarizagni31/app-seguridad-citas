@@ -2,13 +2,22 @@ import { CameraView } from 'expo-camera';
 import { useIsFocused } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { CameraPermissionPanel } from '../components/camera-permission-panel';
 import { ScanFrame } from '../components/scan-frame';
 import { ScanRejectionPanel } from '../components/scan-rejection-panel';
 import { useVehicleScan, type VehicleQrResolver } from '../view-models/use-vehicle-scan';
 import { UserHeader } from '@/modules/auth';
 import { STRINGS } from '@/shared/lib';
-import { AppText, Button, colors, Icon, radius, Screen, sizes, spacing } from '@/shared/ui';
+import {
+  AppText,
+  Button,
+  CameraPermissionPanel,
+  colors,
+  Icon,
+  radius,
+  Screen,
+  sizes,
+  spacing,
+} from '@/shared/ui';
 
 const { entry: TEXT, scanner: SCANNER } = STRINGS;
 const FRAME_SIZE = 200;

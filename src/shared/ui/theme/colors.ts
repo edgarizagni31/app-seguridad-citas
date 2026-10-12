@@ -6,6 +6,8 @@ export const colors = {
   primaryTint: '#E6F5EC',
   primaryText: '#007A38',
   accent: '#F28C00',
+  // Borde amarillo de la placa del vehículo (mockup HSE)
+  plateBorder: '#F2C94C',
   scannerFrame: '#2EE59D',
   text: '#1E293B',
   textMuted: '#5B6B80',

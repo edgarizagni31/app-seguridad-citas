@@ -1,8 +1,11 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { CameraPermissionState } from '../hooks/use-camera-access';
 import { STRINGS } from '@/shared/lib';
-import { Button, EmptyState, spacing } from '@/shared/ui';
+
+import type { CameraPermissionState } from '../hooks/use-camera-access';
+import { spacing } from '../theme';
+import { Button } from './button';
+import { EmptyState } from './empty-state';
 
 const { permission: TEXT } = STRINGS.scanner;
 

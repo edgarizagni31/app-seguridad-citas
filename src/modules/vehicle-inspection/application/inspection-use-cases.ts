@@ -159,6 +159,15 @@ export const capturePhoto =
     return result;
   };
 
+export const discardCapture =
+  (deps: Pick<InspectionDeps, 'photos' | 'logger'>) => async (capture: CapturedPhoto) => {
+    await deps.photos
+      .discardCapture(capture)
+      .catch((error: unknown) =>
+        deps.logger.warn('No se pudo borrar la captura descartada', { error: String(error) }),
+      );
+  };
+
 export const updateObservation =
   (deps: InspectionDeps) =>
   async (id: string, observation: string): CommandResult => {

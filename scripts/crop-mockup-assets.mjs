@@ -11,7 +11,36 @@ const CROPS = {
   vehicle: { file: 'VisitaInspeccion/Imagen generada 18.png', left: 1130, top: 208, width: 370, height: 246 },
 };
 
+// Imágenes referenciales provisionales del cuestionario (RF-G5b): se reemplazan por las oficiales
+const QUESTIONNAIRE = 'CuestionarioInspeccion/Imagen generada 20 (1).png';
+const REFERENCE_CROPS = {
+  'front-photo': [271, 265, 196, 160],
+  'has-trailer': [510, 287, 196, 133],
+  'trailer-photo': [748, 288, 196, 117],
+  'has-rear-left-seal': [987, 281, 193, 131],
+  'rear-left-seal-photo': [1222, 288, 192, 137],
+  'has-rear-right-seal': [1455, 280, 187, 118],
+  'rear-right-seal-photo': [1455, 280, 187, 118],
+  'has-side-door': [77, 717, 210, 113],
+  'side-door-photo': [331, 727, 222, 91],
+  'has-side-seal': [603, 716, 210, 83],
+  'side-seal-photo': [603, 716, 210, 83],
+  'cabin-photo': [858, 700, 219, 140],
+  'has-waybill': [1124, 717, 213, 114],
+  'waybill-photo': [1382, 717, 216, 105],
+};
+
 const crop = ({ file, ...region }) => sharp(`${SOURCE}/${file}`).extract(region);
+
+async function buildReferenceImages() {
+  await mkdir(`${OUTPUT}/inspection`, { recursive: true });
+  for (const [stepId, [left, top, width, height]] of Object.entries(REFERENCE_CROPS)) {
+    await crop({ file: QUESTIONNAIRE, left, top, width, height })
+      .resize({ width: 600 })
+      .jpeg({ quality: 86, mozjpeg: true })
+      .toFile(`${OUTPUT}/inspection/${stepId}.jpg`);
+  }
+}
 
 // Logo sobre blanco: alpha = 1 - min(rgb) y se recupera el color original de los bordes
 function keyOutWhite(data) {
@@ -118,4 +147,5 @@ await crop(CROPS.vehicle).jpeg({ quality: 88, mozjpeg: true }).toFile(`${OUTPUT}
 await buildIllustration();
 await buildLogos();
 await buildIcons();
+await buildReferenceImages();
 console.warn(`Assets generados en ${OUTPUT}`);

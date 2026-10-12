@@ -58,5 +58,8 @@ export function createExpoPhotoStore(deps: { readonly createId: () => string }):
     async deleteAll(inspectionId) {
       deleteIfExists(inspectionDir(inspectionId));
     },
+    async discardCapture(capture) {
+      deleteIfExists(new File(capture.uri));
+    },
   };
 }

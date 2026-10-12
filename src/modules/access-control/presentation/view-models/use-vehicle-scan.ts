@@ -3,12 +3,12 @@ import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
 
 import type { UnitValidationError } from '../../domain';
-import { useCameraAccess } from '../hooks/use-camera-access';
 import { toScanResultView, type ScanResultView } from '../mappers/scan-result-view';
 import { describeValidationError } from '../mappers/validation-message';
 import { useDependencies } from '@/core/di';
 import type { Result } from '@/shared/domain';
 import { STRINGS } from '@/shared/lib';
+import { useCameraAccess } from '@/shared/ui';
 
 export type VehicleScanPhase =
   | { readonly type: 'scanning' }

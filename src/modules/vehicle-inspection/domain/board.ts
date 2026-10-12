@@ -7,6 +7,7 @@ export type BoardVehicle = {
   readonly id: string;
   readonly plate: string;
   readonly enteredAt: string;
+  readonly visitorsEntered: number;
   readonly status: InspectionStatus;
   readonly inspectionId: string | null;
   // Solo para inspecciones en curso: "Paso 6 de 13" y su porcentaje
@@ -63,6 +64,7 @@ export function buildBoard(
             id: vehicle.id,
             plate: vehicle.plate,
             enteredAt: vehicle.enteredAt,
+            visitorsEntered: vehicle.enteredVisitorIds.length,
             status: inspection ? localStatus(inspection) : vehicle.inspectionStatus,
             inspectionId: inspection?.id ?? null,
             progress: inspection && step ? progress(definition, inspection.answers, step.id) : null,

@@ -68,9 +68,12 @@ export const createFakeInspections = (
 ): InspectionUseCases => ({
   board: jest.fn(async () => err({ type: 'no-shift' as const })),
   boardTables: [],
+  get: jest.fn(async () => null),
+  tables: [],
   open: jest.fn(async () => err({ type: 'no-shift' as const })),
   answer: jest.fn(notFound),
   capturePhoto: jest.fn(notFound),
+  discardCapture: jest.fn(async () => undefined),
   updateObservation: jest.fn(notFound),
   finish: jest.fn(notFound),
   reportMismatch: jest.fn(notFound),

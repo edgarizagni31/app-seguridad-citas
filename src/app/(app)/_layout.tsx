@@ -17,7 +17,24 @@ export default function AppLayout() {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
           <Stack.Screen name="entry/confirmed" options={{ gestureEnabled: false }} />
+          <Stack.Screen
+            name="inspections/scan"
+            options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen name="inspections/appointment/[appointmentId]" />
           <Stack.Screen name="inspection/[vehicleId]" />
+          <Stack.Screen
+            name="inspection/wizard/[inspectionId]"
+            options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen
+            name="inspection/camera"
+            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="inspection/result/[inspectionId]"
+            options={{ gestureEnabled: false }}
+          />
         </Stack>
       </ShiftGate>
     </RoleGate>

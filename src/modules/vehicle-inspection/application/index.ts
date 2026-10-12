@@ -3,6 +3,7 @@ export {
   answerInspection,
   boardTables,
   capturePhoto,
+  discardCapture,
   finishInspection,
   loadBoard,
   openInspection,

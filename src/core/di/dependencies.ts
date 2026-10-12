@@ -78,6 +78,8 @@ type InspectionCommand<A extends unknown[]> = (
 export type InspectionUseCases = {
   readonly board: () => Promise<Result<InspectionBoard, { readonly type: 'no-shift' }>>;
   readonly boardTables: readonly string[];
+  readonly get: (id: string) => Promise<StoredInspection | null>;
+  readonly tables: readonly string[];
   readonly open: (input: {
     readonly vehicleId: string;
     readonly inspector: Inspector;
@@ -86,6 +88,7 @@ export type InspectionUseCases = {
     [id: string, stepId: string, answer: Exclude<Answer, { kind: 'photo' }>]
   >;
   readonly capturePhoto: InspectionCommand<[id: string, stepId: string, capture: CapturedPhoto]>;
+  readonly discardCapture: (capture: CapturedPhoto) => Promise<void>;
   readonly updateObservation: InspectionCommand<[id: string, observation: string]>;
   readonly finish: InspectionCommand<[id: string]>;
   readonly reportMismatch: InspectionCommand<[id: string]>;

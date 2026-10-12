@@ -3,11 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import { useCurrentUser } from '../hooks/use-current-user';
 import { useSignOutPrompt } from '../hooks/use-sign-out-prompt';
 import { STRINGS } from '@/shared/lib';
-import { AppText, Avatar, IconButton, RoleChip, spacing } from '@/shared/ui';
+import { AppText, Avatar, colors, IconButton, RoleChip, spacing } from '@/shared/ui';
 
-type UserHeaderProps = { roleLabel: string };
+// Con subtitle, el chip del rol va a la derecha como en el mockup HSE
+type UserHeaderProps = { roleLabel: string; subtitle?: string };
 
-export function UserHeader({ roleLabel }: UserHeaderProps) {
+export function UserHeader({ roleLabel, subtitle }: UserHeaderProps) {
   const user = useCurrentUser();
   const signOut = useSignOutPrompt();
   if (!user) return null;
@@ -19,8 +20,15 @@ export function UserHeader({ roleLabel }: UserHeaderProps) {
         <AppText variant="bodyStrong" role="heading">
           {STRINGS.session.greeting(user.firstName)}
         </AppText>
-        <RoleChip label={roleLabel} />
+        {subtitle ? (
+          <AppText variant="caption" color={colors.textMuted}>
+            {subtitle}
+          </AppText>
+        ) : (
+          <RoleChip label={roleLabel} />
+        )}
       </View>
+      {subtitle && <RoleChip label={roleLabel} />}
       <IconButton icon="logout" label={STRINGS.session.logout} onPress={() => void signOut()} />
     </View>
   );

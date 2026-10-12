@@ -20,6 +20,8 @@ export interface PhotoStore {
   }): Promise<PhotoRef>;
   delete(photo: PhotoRef): Promise<void>;
   deleteAll(inspectionId: string): Promise<void>;
+  // Captura descartada en la vista previa: no debe quedar en la caché
+  discardCapture(capture: CapturedPhoto): Promise<void>;
 }
 
 // Cuerpo de VehicleInspection/Submit (docs/CONTRATO-API-INGRESO-INSPECCION.md)

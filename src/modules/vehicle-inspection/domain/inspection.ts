@@ -1,6 +1,7 @@
 import type { Answer, Answers, PhotoRef } from './answers';
 import type { InspectionDefinition } from './definition';
 import { currentStep, isComplete, pruneAnswers, visibleSteps } from './flow';
+import type { SubmitInspectionRequest } from './ports';
 import { err, ok, type Result } from '@/shared/domain';
 
 export const OBSERVATION_MAX_LENGTH = 500;
@@ -136,3 +137,28 @@ export const photosOf = (inspection: Pick<Inspection, 'answers'>): PhotoRef[] =>
 
 export const readyToSubmit = (inspection: Inspection, definition: InspectionDefinition) =>
   inspection.state === 'draft' && isComplete(definition, inspection.answers);
+
+export function toSubmitRequest(inspection: Inspection): SubmitInspectionRequest {
+  const entries = Object.entries(inspection.answers);
+  return {
+    inspectionId: inspection.id,
+    definitionVersion: inspection.definitionVersion,
+    vehicleId: inspection.vehicleId,
+    appointmentId: inspection.appointmentId,
+    plate: inspection.plate,
+    inspectorId: inspection.inspectorId,
+    startedAt: inspection.startedAt,
+    finishedAt: inspection.finishedAt ?? inspection.updatedAt,
+    result: inspection.state === 'observed' ? 'OBSERVED' : 'COMPLETED',
+    observation: inspection.observation.trim(),
+    answers: entries.map(([stepId, answer]) => ({
+      stepId,
+      type: answer.kind === 'plate' ? 'PLATE' : answer.kind === 'yes_no' ? 'YES_NO' : 'PHOTO',
+      value: answer.kind === 'yes_no' ? answer.value : answer.kind === 'plate' ? true : null,
+      photoHash: answer.kind === 'photo' ? answer.photo.hash : null,
+    })),
+    photos: entries.flatMap(([stepId, answer]) =>
+      answer.kind === 'photo' ? [{ stepId, photo: answer.photo }] : [],
+    ),
+  };
+}

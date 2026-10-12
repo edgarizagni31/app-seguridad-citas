@@ -12,6 +12,15 @@ import type {
 import type { AuthError, CredentialsError, Session } from '@/modules/auth/domain';
 import type { ShiftStatus, Site, SitesError } from '@/modules/sites/domain';
 import type {
+  Answer,
+  CapturedPhoto,
+  Inspection,
+  InspectionCommandError,
+  Inspector,
+  OpenInspectionError,
+  StoredInspection,
+} from '@/modules/vehicle-inspection/domain';
+import type {
   ChangeFeed,
   Clock,
   Connectivity,
@@ -57,6 +66,24 @@ export type SitesUseCases = {
   readonly changeSite: () => Promise<Result<void, SitesError>>;
 };
 
+type InspectionCommand<A extends unknown[]> = (
+  ...args: A
+) => Promise<Result<Inspection, InspectionCommandError>>;
+
+export type InspectionUseCases = {
+  readonly open: (input: {
+    readonly vehicleId: string;
+    readonly inspector: Inspector;
+  }) => Promise<Result<StoredInspection, OpenInspectionError>>;
+  readonly answer: InspectionCommand<
+    [id: string, stepId: string, answer: Exclude<Answer, { kind: 'photo' }>]
+  >;
+  readonly capturePhoto: InspectionCommand<[id: string, stepId: string, capture: CapturedPhoto]>;
+  readonly updateObservation: InspectionCommand<[id: string, observation: string]>;
+  readonly finish: InspectionCommand<[id: string]>;
+  readonly reportMismatch: InspectionCommand<[id: string]>;
+};
+
 export type Dependencies = {
   readonly config: AppConfig;
   readonly logger: Logger;
@@ -68,4 +95,5 @@ export type Dependencies = {
   readonly accessControl: AccessControlUseCases;
   readonly sites: SitesUseCases;
   readonly history: HistorySource;
+  readonly inspections: InspectionUseCases;
 };

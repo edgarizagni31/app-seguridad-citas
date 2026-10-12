@@ -175,6 +175,11 @@ export const STRINGS = {
         ? `${entering} ingresaron · ${notArriving} no llegaron`
         : `${entering} ${entering === 1 ? 'visitante ingresó' : 'visitantes ingresaron'}`,
   },
+  inspection: {
+    attentionTitle: (plate: string) => `Inspección ${plate}`,
+    historySubtitle: (observed: boolean, client: string) =>
+      `${observed ? 'Observada' : 'Inspeccionado'} · ${client}`,
+  },
   inspections: {
     title: 'Inspecciones vehiculares',
     comingSoon: 'Las inspecciones del día aparecerán aquí.',

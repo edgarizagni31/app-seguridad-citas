@@ -27,6 +27,7 @@ export {
   setObservation,
   startInspection,
   submitInspection,
+  toSubmitRequest,
   type AnswerResult,
   type Inspection,
   type InspectionError,
@@ -34,3 +35,17 @@ export {
   type StartInspection,
 } from './inspection';
 export { STANDARD_DEFINITION_V1 } from './standard-definition';
+export {
+  INSPECTION_OUTBOX_KIND,
+  type CapturedPhoto,
+  type InspectionCommandError,
+  type Inspector,
+  type OpenInspectionError,
+  type InspectionGateway,
+  type InspectionGatewayError,
+  type InspectionRepository,
+  type InspectionVerdict,
+  type PhotoStore,
+  type StoredInspection,
+  type SubmitInspectionRequest,
+} from './ports';

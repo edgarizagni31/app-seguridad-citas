@@ -54,6 +54,23 @@ import {
   startSyncTriggers,
   SYNC_MIGRATIONS,
 } from '@/shared/infrastructure/sync';
+import {
+  answerInspection,
+  capturePhoto,
+  createInspectionSyncHandler,
+  finishInspection,
+  inspectionHistoryFrom,
+  openInspection,
+  reportMismatch,
+  updateObservation,
+} from '@/modules/vehicle-inspection/application';
+import { STANDARD_DEFINITION_V1 } from '@/modules/vehicle-inspection/domain';
+import {
+  createExpoPhotoStore,
+  createMockInspectionGateway,
+  createSqliteInspectionRepository,
+  INSPECTION_MIGRATIONS,
+} from '@/modules/vehicle-inspection/infrastructure';
 import { mergeHistory } from '@/shared/domain';
 import { toIsoDate } from '@/shared/lib';
 
@@ -70,7 +87,7 @@ export function createContainer(env: Env): AppContainer {
   const changes = createChangeBus();
   const db = createLazyDatabase(
     () => openExpoSqliteDatabase(),
-    [...SYNC_MIGRATIONS, ...SITES_MIGRATIONS, ...ACCESS_MIGRATIONS],
+    [...SYNC_MIGRATIONS, ...SITES_MIGRATIONS, ...ACCESS_MIGRATIONS, ...INSPECTION_MIGRATIONS],
   );
   const today = () => toIsoDate(clock.now(), env.timeZone);
 
@@ -100,9 +117,25 @@ export function createContainer(env: Env): AppContainer {
     createId: Crypto.randomUUID,
   });
 
+  const inspectionRepo = createSqliteInspectionRepository({
+    db,
+    changes,
+    clock,
+    createId: Crypto.randomUUID,
+  });
+  const photoStore = createExpoPhotoStore({ createId: Crypto.randomUUID });
+  const inspectionGateway = createMockInspectionGateway({ isOnline: connectivity.isOnline });
+
   const sync = createSyncEngine({
     store: createOutboxStore(db),
-    handlers: [createEntrySyncHandler({ gateway: accessGateway, repo: entryRepo })],
+    handlers: [
+      createEntrySyncHandler({ gateway: accessGateway, repo: entryRepo }),
+      createInspectionSyncHandler({
+        gateway: inspectionGateway,
+        repo: inspectionRepo,
+        photos: photoStore,
+      }),
+    ],
     clock,
     logger,
     changes,
@@ -125,8 +158,20 @@ export function createContainer(env: Env): AppContainer {
     clock,
   };
   // Al cerrar el turno se descartan el paquete y los registros ya sincronizados
+  const inspectionDeps = {
+    repo: inspectionRepo,
+    photos: photoStore,
+    shift: shiftStore,
+    entries: entryLogFrom(entryRepo),
+    definition: STANDARD_DEFINITION_V1,
+    clock,
+    createId: Crypto.randomUUID,
+    requestSync: sync.requestSync,
+    logger,
+  };
   const clearShiftData = async () => {
     await entryRepo.clearSynced();
+    await inspectionRepo.clearSynced();
   };
   const withCleanup =
     <T>(task: () => Promise<T>) =>
@@ -151,7 +196,15 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
-    history: mergeHistory([entryHistoryFrom(entryRepo)]),
+    history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),
+    inspections: {
+      open: openInspection(inspectionDeps),
+      answer: answerInspection(inspectionDeps),
+      capturePhoto: capturePhoto(inspectionDeps),
+      updateObservation: updateObservation(inspectionDeps),
+      finish: finishInspection(inspectionDeps),
+      reportMismatch: reportMismatch(inspectionDeps),
+    },
     auth: {
       login: login(authDeps),
       restoreSession: restoreSession(authDeps),

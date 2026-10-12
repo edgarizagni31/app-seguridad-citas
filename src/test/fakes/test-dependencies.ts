@@ -1,4 +1,10 @@
-import type { AccessControlUseCases, AuthUseCases, Dependencies, SitesUseCases } from '@/core/di';
+import type {
+  AccessControlUseCases,
+  AuthUseCases,
+  Dependencies,
+  InspectionUseCases,
+  SitesUseCases,
+} from '@/core/di';
 import { readQr } from '@/modules/access-control/application';
 import { err, ok, type Clock, type Logger } from '@/shared/domain';
 import { createChangeBus } from '@/shared/infrastructure/db';
@@ -54,6 +60,20 @@ export const createFakeAccessControl = (
   ...overrides,
 });
 
+const notFound = async () => err({ type: 'not-found' as const });
+
+export const createFakeInspections = (
+  overrides: Partial<InspectionUseCases> = {},
+): InspectionUseCases => ({
+  open: jest.fn(async () => err({ type: 'no-shift' as const })),
+  answer: jest.fn(notFound),
+  capturePhoto: jest.fn(notFound),
+  updateObservation: jest.fn(notFound),
+  finish: jest.fn(notFound),
+  reportMismatch: jest.fn(notFound),
+  ...overrides,
+});
+
 export function createTestDependencies(overrides: Partial<Dependencies> = {}): Dependencies {
   const clock = overrides.clock ?? createFixedClock();
   return {
@@ -67,6 +87,7 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     accessControl: createFakeAccessControl(clock),
     sites: createFakeSitesUseCases(),
     history: { tables: [], list: jest.fn(async () => []) },
+    inspections: createFakeInspections(),
     ...overrides,
   };
 }

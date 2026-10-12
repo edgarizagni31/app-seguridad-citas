@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 
 import type { UnitValidation } from '../../domain';
 import { useEntryFlowStore } from '../stores/entry-flow-store';
+import { useDependencies } from '@/core/di';
 import { STRINGS } from '@/shared/lib';
 
 import { VehicleScanScreen } from './vehicle-scan-screen';
@@ -9,6 +10,7 @@ import { VehicleScanScreen } from './vehicle-scan-screen';
 // Inicio de Garita (RF-A3): escanear el QR del vehículo
 export function GateHomeScreen() {
   const router = useRouter();
+  const { accessControl } = useDependencies();
   const start = useEntryFlowStore((state) => state.start);
 
   const admit = (validation: UnitValidation) => {
@@ -16,5 +18,11 @@ export function GateHomeScreen() {
     router.push('/entry/visitors');
   };
 
-  return <VehicleScanScreen roleLabel={STRINGS.session.securityRole} onAdmitted={admit} />;
+  return (
+    <VehicleScanScreen
+      roleLabel={STRINGS.session.securityRole}
+      resolve={accessControl.validateUnit}
+      onResolved={admit}
+    />
+  );
 }

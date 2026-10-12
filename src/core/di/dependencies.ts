@@ -1,6 +1,7 @@
 import type {
   ConfirmEntryError,
   EntryDraft,
+  IdentifiedVehicle,
   ScanRecord,
   UnitValidation,
   UnitValidationError,
@@ -50,6 +51,9 @@ export type AuthUseCases = {
 export type AccessControlUseCases = {
   readonly readQr: (rawContent: string) => ScanRecord;
   readonly validateUnit: (token: string) => Promise<Result<UnitValidation, UnitValidationError>>;
+  readonly identifyVehicle: (
+    token: string,
+  ) => Promise<Result<IdentifiedVehicle, UnitValidationError>>;
   readonly validateVisitor: (
     visitor: VisitorDocument & { readonly voucherId: string },
   ) => Promise<Result<VisitorValidation, VisitorValidationError>>;

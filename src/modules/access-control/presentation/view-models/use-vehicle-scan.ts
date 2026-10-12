@@ -2,11 +2,12 @@ import type { BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
 
-import type { UnitValidation } from '../../domain';
+import type { UnitValidationError } from '../../domain';
 import { useCameraAccess } from '../hooks/use-camera-access';
 import { toScanResultView, type ScanResultView } from '../mappers/scan-result-view';
 import { describeValidationError } from '../mappers/validation-message';
 import { useDependencies } from '@/core/di';
+import type { Result } from '@/shared/domain';
 import { STRINGS } from '@/shared/lib';
 
 export type VehicleScanPhase =
@@ -16,7 +17,9 @@ export type VehicleScanPhase =
 
 const { rejection: TEXT } = STRINGS.entry;
 
-export function useVehicleScan(onAdmitted: (validation: UnitValidation) => void) {
+export type VehicleQrResolver<T> = (token: string) => Promise<Result<T, UnitValidationError>>;
+
+export function useVehicleScan<T>(resolve: VehicleQrResolver<T>, onResolved: (value: T) => void) {
   const { accessControl, clock, config, logger } = useDependencies();
   const camera = useCameraAccess();
   const [phase, setPhase] = useState<VehicleScanPhase>({ type: 'scanning' });
@@ -40,14 +43,14 @@ export function useVehicleScan(onAdmitted: (validation: UnitValidation) => void)
       return reject(TEXT.notVehicleQr, toScanResultView(scan, clock.now(), config.timeZone));
     }
     setPhase({ type: 'validating' });
-    const result = await accessControl.validateUnit(scan.content.token);
+    const result = await resolve(scan.content.token);
     if (!result.ok) return reject(describeValidationError(result.error, config.timeZone));
 
     void vibrate(Haptics.NotificationFeedbackType.Success);
     setTorchOn(false);
     setPhase({ type: 'scanning' });
     locked.current = false;
-    onAdmitted(result.value);
+    onResolved(result.value);
   };
 
   return {

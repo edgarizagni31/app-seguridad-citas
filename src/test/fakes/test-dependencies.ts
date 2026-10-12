@@ -55,6 +55,7 @@ export const createFakeAccessControl = (
 ): AccessControlUseCases => ({
   readQr: readQr({ clock }),
   validateUnit: jest.fn(async () => err({ type: 'no-shift' as const })),
+  identifyVehicle: jest.fn(async () => err({ type: 'no-shift' as const })),
   validateVisitor: jest.fn(async () => ok({ checkedBy: 'server' as const })),
   confirmEntry: jest.fn(async () => err({ type: 'storage' as const })),
   ...overrides,

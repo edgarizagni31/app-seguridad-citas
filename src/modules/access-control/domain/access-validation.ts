@@ -21,3 +21,9 @@ export type VisitorValidationError =
   | { readonly type: 'no-shift' }
   | { readonly type: 'invalid-document' }
   | { readonly type: 'blacklisted'; readonly message: string | null };
+
+export type IdentifiedVehicle = {
+  readonly vehicleId: string;
+  readonly plate: string;
+  readonly entered: boolean;
+};

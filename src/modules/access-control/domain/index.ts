@@ -1,6 +1,7 @@
 export type { AccessGatewayError, AccessValidationGateway, ServerVerdict } from './access-gateway';
 export type {
   CheckedBy,
+  IdentifiedVehicle,
   UnitValidation,
   UnitValidationError,
   VisitorValidation,

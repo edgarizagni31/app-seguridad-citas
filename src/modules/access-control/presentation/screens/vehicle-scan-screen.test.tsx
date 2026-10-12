@@ -40,7 +40,12 @@ async function setup(
   const onAdmitted = jest.fn();
   const user = userEvent.setup();
   await renderWithDeps(
-    <VehicleScanScreen roleLabel="Seguridad" onAdmitted={onAdmitted} onCancel={onCancel} />,
+    <VehicleScanScreen
+      roleLabel="Seguridad"
+      resolve={validateUnit}
+      onResolved={onAdmitted}
+      onCancel={onCancel}
+    />,
     { clock, accessControl: createFakeAccessControl(clock, { validateUnit }) },
   );
   const scan = (data: string) => act(async () => mockCamera.onScan?.({ data }));

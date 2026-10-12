@@ -5,7 +5,7 @@ import { buildDemoSnapshot, signVehicleQr } from '@/shared/infrastructure/demo';
 import { buildVehicleQrClaims } from '@/test/factories/vehicle-qr';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
 
-import { validateUnit, validateVisitor } from './validate-access';
+import { identifyVehicle, validateUnit, validateVisitor } from './validate-access';
 
 const NOW = new Date('2026-10-05T16:42:00Z');
 const SNAPSHOT = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-05', NOW);
@@ -31,7 +31,12 @@ function setup({
     isOnline: async () => online,
     clock: createFixedClock(NOW.toISOString()),
   };
-  return { gateway, validateUnit: validateUnit(deps), validateVisitor: validateVisitor(deps) };
+  return {
+    gateway,
+    validateUnit: validateUnit(deps),
+    validateVisitor: validateVisitor(deps),
+    identifyVehicle: identifyVehicle(deps),
+  };
 }
 
 const token = (overrides = {}) => signVehicleQr(buildVehicleQrClaims(overrides));
@@ -176,6 +181,43 @@ describe('validateVisitor', () => {
 
     expect(await validateVisitor({ ...visitor, documentNumber: '04512378-9' })).toEqual(
       ok({ checkedBy: 'local' }),
+    );
+  });
+});
+
+describe('identifyVehicle', () => {
+  it('identifica una unidad que ya ingresó sin aplicar reglas de ingreso', async () => {
+    const { identifyVehicle, gateway } = setup();
+    const entered = token({ apt: 'apt-dollarcity', plt: 'MNP-456', vcd: 'APPASP0000000000000094' });
+
+    expect(await identifyVehicle(entered)).toEqual(
+      ok({ vehicleId: 'veh-mnp-456', plate: 'MNP-456', entered: true }),
+    );
+    expect(gateway.validateUnit).not.toHaveBeenCalled();
+  });
+
+  it('informa si la unidad todavía no ingresó', async () => {
+    const { identifyVehicle } = setup();
+
+    expect(await identifyVehicle(token())).toEqual(
+      ok({ vehicleId: 'veh-abc-123', plate: 'ABC-123', entered: false }),
+    );
+  });
+
+  it('rechaza QR inválidos, de otra cita o con otra placa', async () => {
+    const { identifyVehicle } = setup();
+
+    expect(await identifyVehicle(token({ sid: 'site-norte' }))).toEqual(
+      err({ type: 'qr', error: { type: 'OtherSite' } }),
+    );
+    expect(await identifyVehicle(token({ apt: 'otra' }))).toMatchObject(
+      err({ type: 'unit', rejection: { type: 'VoucherNotFound' } }),
+    );
+    expect(await identifyVehicle(token({ plt: 'ZZZ-999' }))).toMatchObject(
+      err({ type: 'unit', rejection: { type: 'PlateNotInVoucher', plate: 'ZZZ-999' } }),
+    );
+    expect(await setup({ snapshot: null }).identifyVehicle(token())).toEqual(
+      err({ type: 'no-shift' }),
     );
   });
 });

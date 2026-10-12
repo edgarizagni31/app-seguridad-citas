@@ -7,6 +7,7 @@ import {
   createEntrySyncHandler,
   entryHistoryFrom,
   entryLogFrom,
+  identifyVehicle,
   readQr,
   validateUnit,
   validateVisitor,
@@ -219,6 +220,7 @@ export function createContainer(env: Env): AppContainer {
     accessControl: {
       readQr: readQr({ clock }),
       validateUnit: validateUnit(validationDeps),
+      identifyVehicle: identifyVehicle(validationDeps),
       validateVisitor: validateVisitor(validationDeps),
       confirmEntry: confirmEntry({
         repo: entryRepo,

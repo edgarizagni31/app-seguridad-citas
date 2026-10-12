@@ -2,11 +2,10 @@ import { CameraView } from 'expo-camera';
 import { useIsFocused } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import type { UnitValidation } from '../../domain';
 import { CameraPermissionPanel } from '../components/camera-permission-panel';
 import { ScanFrame } from '../components/scan-frame';
 import { ScanRejectionPanel } from '../components/scan-rejection-panel';
-import { useVehicleScan } from '../view-models/use-vehicle-scan';
+import { useVehicleScan, type VehicleQrResolver } from '../view-models/use-vehicle-scan';
 import { UserHeader } from '@/modules/auth';
 import { STRINGS } from '@/shared/lib';
 import { AppText, Button, colors, Icon, radius, Screen, sizes, spacing } from '@/shared/ui';
@@ -14,15 +13,21 @@ import { AppText, Button, colors, Icon, radius, Screen, sizes, spacing } from '@
 const { entry: TEXT, scanner: SCANNER } = STRINGS;
 const FRAME_SIZE = 200;
 
-type VehicleScanScreenProps = {
+type VehicleScanScreenProps<T> = {
   roleLabel: string;
-  onAdmitted: (validation: UnitValidation) => void;
+  resolve: VehicleQrResolver<T>;
+  onResolved: (value: T) => void;
   // Solo cuando el escáner se abre desde otro flujo
   onCancel?: () => void;
 };
 
-export function VehicleScanScreen({ roleLabel, onAdmitted, onCancel }: VehicleScanScreenProps) {
-  const vm = useVehicleScan(onAdmitted);
+export function VehicleScanScreen<T>({
+  roleLabel,
+  resolve,
+  onResolved,
+  onCancel,
+}: VehicleScanScreenProps<T>) {
+  const vm = useVehicleScan(resolve, onResolved);
   const focused = useIsFocused();
   const { phase, camera } = vm;
   const cameraOn = focused && camera.state === 'granted' && phase.type === 'scanning';

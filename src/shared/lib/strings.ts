@@ -75,6 +75,100 @@ export const STRINGS = {
     cancel: 'Cancelar',
   },
   entry: {
+    scanTitle: 'Escanear QR del vehículo',
+    scanSubtitle: 'Apunta al código QR del vehículo para ver la lista de visitantes.',
+    scanHint: 'Apunta al código QR del vehículo',
+    cancel: 'Cancelar',
+    validating: 'Validando el QR del vehículo…',
+    visitorsTitle: 'Visitantes del vehículo',
+    voucher: 'Voucher',
+    appointmentWindow: (start: string, end: string) => `Cita ${start} – ${end}`,
+    expectedVisitors: (count: number) => `Visitantes esperados (${count})`,
+    arrived: 'Llegó',
+    notArrived: 'No llegó',
+    pending: 'Pendiente',
+    added: 'Agregado',
+    entered: 'Ingresó',
+    enteredAt: (time: string) => `Ingresó ${time}`,
+    blacklisted: 'Lista negra',
+    blacklistedMessage: (name: string) =>
+      `${name} se encuentra en la lista negra de la sede y no puede ingresar.`,
+    checkingVisitor: 'Validando visitante…',
+    addVisitor: 'Agregar visitante',
+    markHint: 'Marca si llegó o no cada visitante.',
+    lateArrivalHint: 'La unidad ya ingresó. Marca a los visitantes que llegan ahora.',
+    offlineValidated: 'Validado sin conexión con los datos del día. Se confirmará al reconectar.',
+    confirm: 'Confirmar ingreso',
+    confirmCount: (count: number) => `Confirmar ingreso (${count})`,
+    confirmTitle: '¿Confirmar el ingreso?',
+    confirmEntering: (count: number) =>
+      count === 1 ? 'Ingresará 1 visitante.' : `Ingresarán ${count} visitantes.`,
+    confirmNotArriving: (count: number) =>
+      count === 1
+        ? '1 visitante no llegó y no ingresará.'
+        : `${count} visitantes no llegaron y no ingresarán.`,
+    saveFailed: 'No se pudo guardar el ingreso. Inténtalo de nuevo.',
+    confirmedTitle: 'Ingreso confirmado',
+    confirmedMessage: 'Los visitantes registrados han sido procesados correctamente.',
+    recordCompleted: 'Registro completado',
+    pendingInspection: 'Pendiente de inspección',
+    hseInfo: 'La inspección vehicular la realiza el equipo HSE.',
+    pendingSync: 'Se enviará al servidor en cuanto haya conexión.',
+    backHome: 'Volver al inicio',
+    inspect: 'Realizar inspección',
+    optional: '(opcional)',
+    roles: { DRIVER: 'Conductor', HELPER: 'Ayudante' },
+    documentTypes: {
+      DUI: 'DUI',
+      PASSPORT: 'Pasaporte',
+      RESIDENT_CARD: 'Carné de residente',
+      DRIVER_LICENSE: 'Licencia de conducir',
+    },
+    form: {
+      title: 'Agregar visitante',
+      subtitle: 'Completa los datos del visitante que no está en la lista del vehículo.',
+      close: 'Cerrar',
+      fullName: 'Nombre completo *',
+      documentType: 'Tipo de documento *',
+      documentTypePlaceholder: 'Selecciona un tipo',
+      documentNumber: 'Número de documento *',
+      role: 'Rol en el vehículo *',
+      errors: {
+        nameRequired: 'Ingresa el nombre completo',
+        typeRequired: 'Selecciona el tipo de documento',
+        numberRequired: 'Ingresa el número de documento',
+        duiInvalid: 'El DUI tiene 8 dígitos, guion y 1 dígito (00000000-0)',
+        documentInvalid: 'Usa de 4 a 20 letras o números',
+        duplicate: 'Ese documento ya está en la lista del vehículo',
+        offlineNoShift: 'No hay datos del turno para validar al visitante.',
+      },
+    },
+    rejection: {
+      title: 'Ingreso no permitido',
+      scanAgain: 'Escanear otro',
+      noShift: 'No hay datos del turno. Actualízalos desde Mi perfil.',
+      notVehicleQr:
+        'Este QR no es el del vehículo. Escanea el QR del vehículo para ver sus visitantes.',
+      qr: {
+        InvalidFormat: 'El código QR no tiene un formato válido.',
+        InvalidSignature:
+          'El QR no es auténtico: su firma no coincide. Solicita al transportista un QR válido.',
+        Expired: 'El QR del vehículo venció. Solicita uno nuevo al transportista.',
+        NotYetValid: 'El QR del vehículo todavía no está vigente.',
+        OtherSite: 'El QR corresponde a otra sede.',
+      },
+      unit: {
+        VoucherNotFound: (code: string) =>
+          `El voucher ${code} no está entre las citas de hoy de esta sede. Actualiza los datos si se programó hace poco.`,
+        VoucherInactive: (code: string) => `El voucher ${code} no está activo.`,
+        PlateNotInVoucher: (plate: string, code: string) =>
+          `La placa ${plate} no pertenece al voucher ${code}.`,
+        AlreadyEntered: (plate: string, time: string) =>
+          `La placa ${plate} ya registró su ingreso a las ${time}.`,
+        OutsideEntryWindow: (code: string, from: string, to: string) =>
+          `El voucher ${code} admite el ingreso entre las ${from} y las ${to}.`,
+      },
+    },
     attentionTitle: (plate: string) => `Ingreso ${plate}`,
     historySubtitle: (entering: number, notArriving: number) =>
       notArriving > 0
@@ -118,19 +212,12 @@ export const STRINGS = {
   },
   accessDenied: {
     title: 'Sin acceso al control de garita',
-    message: 'Tu usuario no tiene un rol de seguridad asignado. Solicítalo a tu administrador.',
-  },
-  home: {
-    emptyTitle: 'Aún no has escaneado ningún código',
-    emptyMessage: 'Apunta la cámara al QR de la unidad, voucher o pase de visitante',
-    scan: 'Escanear QR',
-    scanAnother: 'Escanear otro',
+    message:
+      'Tu usuario no tiene un rol de Seguridad ni de HSE asignado. Solicítalo a tu administrador.',
   },
   scanner: {
-    hint: 'Centra el código QR dentro del recuadro',
     torchOn: 'Encender linterna',
     torchOff: 'Apagar linterna',
-    close: 'Cerrar escáner',
     permission: {
       title: 'Necesitamos acceso a la cámara',
       message:

@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '@/modules/access-control';
+export { GateHomeScreen as default } from '@/modules/access-control';

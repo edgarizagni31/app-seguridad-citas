@@ -27,7 +27,7 @@ export default function TabsLayout() {
         <Tabs.Protected guard={allowed('inspections')}>
           <Tabs.Screen
             name="inspections"
-            options={tab(STRINGS.tabs.inspections, 'clipboard-check-outline')}
+            options={tab(STRINGS.tabs.inspections, 'truck-outline')}
           />
         </Tabs.Protected>
         <Tabs.Screen name="history" options={tab(STRINGS.tabs.history, 'history')} />

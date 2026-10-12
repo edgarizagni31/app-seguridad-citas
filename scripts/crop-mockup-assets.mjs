@@ -8,6 +8,7 @@ const CROPS = {
   heroGate: { file: '02-login.png', left: 77, top: 240, width: 697, height: 496 },
   logo: { file: '02-login.png', left: 258, top: 834, width: 340, height: 58 },
   illustration: { file: '04-inicio-vacio.png', left: 130, top: 800, width: 602, height: 345 },
+  vehicle: { file: 'VisitaInspeccion/Imagen generada 18.png', left: 1130, top: 208, width: 370, height: 246 },
 };
 
 const crop = ({ file, ...region }) => sharp(`${SOURCE}/${file}`).extract(region);
@@ -113,6 +114,7 @@ async function buildIcons() {
 
 await mkdir(OUTPUT, { recursive: true });
 await crop(CROPS.heroGate).jpeg({ quality: 88, mozjpeg: true }).toFile(`${OUTPUT}/hero-gate.jpg`);
+await crop(CROPS.vehicle).jpeg({ quality: 88, mozjpeg: true }).toFile(`${OUTPUT}/vehicle-photo.jpg`);
 await buildIllustration();
 await buildLogos();
 await buildIcons();

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,16 +8,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { STRINGS } from '@/shared/lib';
-import { AppText, colors, radius, spacing } from '@/shared/ui';
+import { colors, radius, spacing } from '@/shared/ui';
 
 const CORNER = 36;
 const STROKE = 5;
-const MAX_FRAME = 280;
 
-export function ScannerOverlay() {
-  const { width } = useWindowDimensions();
-  const frame = Math.min(width * 0.72, MAX_FRAME);
+// Esquinas del encuadre con una línea de barrido, sin oscurecer la imagen (mockup 1)
+export function ScanFrame({ size: frame }: { size: number }) {
   const sweep = useSharedValue(0);
 
   useEffect(() => {
@@ -31,32 +28,20 @@ export function ScannerOverlay() {
   }));
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <View style={styles.shade} />
-      <View style={[styles.middle, { height: frame }]}>
-        <View style={styles.shade} />
-        <View style={{ width: frame, height: frame }}>
-          <View style={[styles.corner, styles.topLeft]} />
-          <View style={[styles.corner, styles.topRight]} />
-          <View style={[styles.corner, styles.bottomLeft]} />
-          <View style={[styles.corner, styles.bottomRight]} />
-          <Animated.View style={[styles.line, lineStyle]} />
-        </View>
-        <View style={styles.shade} />
-      </View>
-      <View style={[styles.shade, styles.hintArea]}>
-        <AppText variant="bodyStrong" color={colors.textOnDark} align="center">
-          {STRINGS.scanner.hint}
-        </AppText>
+    <View style={[styles.center, StyleSheet.absoluteFill]} pointerEvents="none">
+      <View style={{ width: frame, height: frame }}>
+        <View style={[styles.corner, styles.topLeft]} />
+        <View style={[styles.corner, styles.topRight]} />
+        <View style={[styles.corner, styles.bottomLeft]} />
+        <View style={[styles.corner, styles.bottomRight]} />
+        <Animated.View style={[styles.line, lineStyle]} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  shade: { flex: 1, backgroundColor: colors.overlay },
-  middle: { flexDirection: 'row' },
-  hintArea: { alignItems: 'center', paddingTop: spacing.lg, paddingHorizontal: spacing.lg },
+  center: { alignItems: 'center', justifyContent: 'center' },
   corner: {
     position: 'absolute',
     width: CORNER,

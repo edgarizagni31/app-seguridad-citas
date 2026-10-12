@@ -11,10 +11,13 @@ export default function AppLayout() {
       <ShiftGate>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="entry/visitors" />
           <Stack.Screen
-            name="scanner"
-            options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+            name="entry/add-visitor"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen name="entry/confirmed" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="inspection/[vehicleId]" />
         </Stack>
       </ShiftGate>
     </RoleGate>

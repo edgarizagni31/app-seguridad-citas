@@ -49,3 +49,10 @@ export {
   type StoredInspection,
   type SubmitInspectionRequest,
 } from './ports';
+export {
+  buildBoard,
+  countByStatus,
+  type BoardAppointment,
+  type BoardVehicle,
+  type InspectionBoard,
+} from './board';

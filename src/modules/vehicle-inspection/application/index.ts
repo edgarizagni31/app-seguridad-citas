@@ -1,8 +1,10 @@
 export { createInspectionSyncHandler, inspectionHistoryFrom, statusOf } from './inspection-sync';
 export {
   answerInspection,
+  boardTables,
   capturePhoto,
   finishInspection,
+  loadBoard,
   openInspection,
   reportMismatch,
   updateObservation,

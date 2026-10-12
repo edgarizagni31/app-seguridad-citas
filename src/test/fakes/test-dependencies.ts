@@ -66,6 +66,8 @@ const notFound = async () => err({ type: 'not-found' as const });
 export const createFakeInspections = (
   overrides: Partial<InspectionUseCases> = {},
 ): InspectionUseCases => ({
+  board: jest.fn(async () => err({ type: 'no-shift' as const })),
+  boardTables: [],
   open: jest.fn(async () => err({ type: 'no-shift' as const })),
   answer: jest.fn(notFound),
   capturePhoto: jest.fn(notFound),

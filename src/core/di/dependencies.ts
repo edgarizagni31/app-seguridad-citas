@@ -16,6 +16,7 @@ import type {
   Answer,
   CapturedPhoto,
   Inspection,
+  InspectionBoard,
   InspectionCommandError,
   Inspector,
   OpenInspectionError,
@@ -75,6 +76,8 @@ type InspectionCommand<A extends unknown[]> = (
 ) => Promise<Result<Inspection, InspectionCommandError>>;
 
 export type InspectionUseCases = {
+  readonly board: () => Promise<Result<InspectionBoard, { readonly type: 'no-shift' }>>;
+  readonly boardTables: readonly string[];
   readonly open: (input: {
     readonly vehicleId: string;
     readonly inspector: Inspector;

@@ -57,10 +57,12 @@ import {
 } from '@/shared/infrastructure/sync';
 import {
   answerInspection,
+  boardTables,
   capturePhoto,
   createInspectionSyncHandler,
   finishInspection,
   inspectionHistoryFrom,
+  loadBoard,
   openInspection,
   reportMismatch,
   updateObservation,
@@ -199,6 +201,8 @@ export function createContainer(env: Env): AppContainer {
     sync,
     history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),
     inspections: {
+      board: loadBoard(inspectionDeps),
+      boardTables: boardTables(inspectionDeps),
       open: openInspection(inspectionDeps),
       answer: answerInspection(inspectionDeps),
       capturePhoto: capturePhoto(inspectionDeps),

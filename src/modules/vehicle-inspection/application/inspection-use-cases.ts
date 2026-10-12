@@ -1,5 +1,6 @@
 import {
   answerStep,
+  buildBoard,
   reportPlateMismatch,
   setObservation,
   startInspection,
@@ -8,6 +9,7 @@ import {
   type Answer,
   type CapturedPhoto,
   type Inspection,
+  type InspectionBoard,
   type InspectionCommandError,
   type InspectionDefinition,
   type InspectionError,
@@ -27,6 +29,7 @@ import {
   type Logger,
   type Result,
   type ShiftReader,
+  SHIFT_TABLES,
 } from '@/shared/domain';
 
 export type InspectionDeps = {
@@ -193,3 +196,19 @@ export const finishInspection = (deps: InspectionDeps) => (id: string) =>
 // La placa no coincide (RF-G1b): se registra la incidencia como inspección observada
 export const reportMismatch = (deps: InspectionDeps) => (id: string) =>
   close(deps, id, (inspection) => reportPlateMismatch(inspection, deps.clock.now()));
+
+export const loadBoard =
+  (deps: Pick<InspectionDeps, 'shift' | 'entries' | 'repo' | 'definition'>) =>
+  async (): Promise<Result<InspectionBoard, { readonly type: 'no-shift' }>> => {
+    const baseline = await deps.shift.current();
+    if (!baseline) return err({ type: 'no-shift' });
+    const snapshot = applyEntries(baseline, await deps.entries.list());
+    return ok(buildBoard(snapshot, await deps.repo.list(), deps.definition));
+  };
+
+// Tablas que cambian el tablero: paquete del día, ingresos locales e inspecciones
+export const boardTables = (deps: Pick<InspectionDeps, 'entries' | 'repo'>) => [
+  ...SHIFT_TABLES,
+  ...deps.entries.tables,
+  ...deps.repo.tables,
+];

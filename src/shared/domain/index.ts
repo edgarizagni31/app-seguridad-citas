@@ -24,11 +24,18 @@ export type {
   SyncSnapshot,
 } from './sync';
 export type { Connectivity } from './connectivity';
-export type { SyncService } from './sync';
+export {
+  mergeHistory,
+  type HistoryEntry,
+  type HistorySource,
+  type RecordSyncStatus,
+} from './history';
+export { SYNC_TABLES, type SyncService } from './sync';
 export {
   findBlacklisted,
   findVehicle,
   normalizeDocument,
+  SHIFT_TABLES,
   type BlacklistEntry,
   type DocumentType,
   type InspectionStatus,

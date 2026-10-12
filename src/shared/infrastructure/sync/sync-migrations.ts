@@ -29,4 +29,4 @@ export const SYNC_MIGRATIONS: readonly Migration[] = [
   },
 ];
 
-export const SYNC_TABLES = ['outbox', 'attention_items'] as const;
+export { SYNC_TABLES } from '@/shared/domain';

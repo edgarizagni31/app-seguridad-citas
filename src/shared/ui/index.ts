@@ -5,6 +5,7 @@ export { Avatar, initialsOf } from './components/avatar';
 export { Banner, type BannerTone } from './components/banner';
 export { BrandSplash } from './components/brand-splash';
 export { Button } from './components/button';
+export { Card } from './components/card';
 export { EmptyState } from './components/empty-state';
 export { ErrorFallback } from './components/error-fallback';
 export { HeroImage } from './components/hero-image';

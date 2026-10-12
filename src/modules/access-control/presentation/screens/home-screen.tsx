@@ -1,8 +1,8 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { GateHeader } from '../components/gate-header';
 import { ScanResultCard } from '../components/scan-result-card';
 import { useHomeViewModel } from '../view-models/use-home-view-model';
+import { UserHeader } from '@/modules/auth';
 import { STRINGS } from '@/shared/lib';
 import { ASSETS, Banner, Button, EmptyState, HeroImage, Screen, spacing } from '@/shared/ui';
 
@@ -12,9 +12,9 @@ export function HomeScreen() {
   const vm = useHomeViewModel();
 
   return (
-    <Screen>
+    <Screen edges={[]}>
       <View style={styles.header}>
-        <GateHeader />
+        <UserHeader roleLabel={STRINGS.session.securityRole} />
       </View>
       {vm.result ? (
         <ScrollView contentContainerStyle={styles.result}>

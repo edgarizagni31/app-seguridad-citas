@@ -1,5 +1,8 @@
 import type { Result } from './result';
 
+// Tablas que avisan cuando cambia el estado de sincronización
+export const SYNC_TABLES = ['outbox', 'attention_items'] as const;
+
 export type OutboxStatus = 'pending' | 'in_flight' | 'failed';
 
 export type OutboxItem = {

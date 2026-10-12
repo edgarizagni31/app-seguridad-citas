@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import type { ShiftStatus, Site, SitesError } from '../../domain';
 import { useDependencies } from '@/core/di';
-import type { Result } from '@/shared/domain';
+import { SHIFT_TABLES, type Result } from '@/shared/domain';
 
 export type ShiftGatePhase =
   | { readonly type: 'checking' }
@@ -12,8 +12,6 @@ export type ShiftGatePhase =
   | { readonly type: 'error'; readonly site: Site | null }
   | { readonly type: 'no-sites' }
   | { readonly type: 'ready' };
-
-const SITES_TABLES = ['shift_snapshot', 'app_settings'];
 
 export function useShiftGate() {
   const { sites, changes, logger } = useDependencies();
@@ -58,7 +56,7 @@ export function useShiftGate() {
   useEffect(() => {
     void sites.shiftStatus().then(apply);
     // Al cambiar de sede desde el perfil, el estado se vuelve a evaluar
-    return changes.subscribe(SITES_TABLES, () => {
+    return changes.subscribe(SHIFT_TABLES, () => {
       if (!downloading.current) void sites.shiftStatus().then(apply);
     });
   }, [changes, sites]);

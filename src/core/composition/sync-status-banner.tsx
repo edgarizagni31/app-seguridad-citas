@@ -1,9 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
 import { useDependencies } from '@/core/di';
+import { SYNC_TABLES } from '@/shared/domain';
 import { spacing, SyncBanner, useLiveData, useOnlineStatus } from '@/shared/ui';
-
-const SYNC_TABLES = ['outbox', 'attention_items'];
 
 export function SyncStatusBanner() {
   const { connectivity, changes, sync } = useDependencies();

@@ -41,6 +41,43 @@ export const STRINGS = {
     updatedAgo: (minutes: number) =>
       minutes < 1 ? 'Actualizado hace un momento' : `Actualizado hace ${minutes} min`,
   },
+  tabs: {
+    gate: 'Garita',
+    inspections: 'Inspecciones',
+    history: 'Historial',
+    profile: 'Mi perfil',
+  },
+  history: {
+    title: 'Historial',
+    subtitle: 'Registros de este turno',
+    emptyTitle: 'Aún no hay registros en este turno',
+    emptyMessage: 'Los ingresos e inspecciones que registres aparecerán aquí.',
+    attentionTitle: 'Requiere atención',
+    attentionCount: (count: number) =>
+      `${count} ${count === 1 ? 'registro rechazado' : 'registros rechazados'} por el servidor`,
+    dismiss: 'Descartar',
+    status: { pending: 'Pendiente', synced: 'Sincronizado', rejected: 'Rechazado' },
+    kinds: { entry: 'Ingreso', inspection: 'Inspección' },
+  },
+  profile: {
+    title: 'Mi perfil',
+    site: 'Sede',
+    role: 'Rol',
+    sync: 'Sincronización',
+    allSynced: 'Todo sincronizado',
+    pending: (count: number) =>
+      `${count} ${count === 1 ? 'registro pendiente' : 'registros pendientes'}`,
+    updateFailed: 'No se pudieron actualizar los datos. Verifica tu conexión.',
+    logoutWarningTitle: 'Tienes registros sin sincronizar',
+    logoutWarningMessage: (count: number) =>
+      `Hay ${count} ${count === 1 ? 'registro pendiente' : 'registros pendientes'}. Se enviarán cuando vuelvas a iniciar sesión con conexión.`,
+    logoutAnyway: 'Cerrar sesión igualmente',
+    cancel: 'Cancelar',
+  },
+  inspections: {
+    title: 'Inspecciones vehiculares',
+    comingSoon: 'Las inspecciones del día aparecerán aquí.',
+  },
   login: {
     title: 'Iniciar sesión',
     subtitle: 'Usa tu cuenta de Ransa 360',
@@ -70,6 +107,7 @@ export const STRINGS = {
     logout: 'Cerrar sesión',
     greeting: (firstName: string) => `Hola, ${firstName}`,
     securityRole: 'Seguridad',
+    hseRole: 'HSE',
   },
   accessDenied: {
     title: 'Sin acceso al control de garita',

@@ -10,7 +10,7 @@ export default function AppLayout() {
     <RoleGate>
       <ShiftGate>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="scanner"
             options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}

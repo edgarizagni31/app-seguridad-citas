@@ -5,6 +5,7 @@ import type {
   ChangeFeed,
   Clock,
   Connectivity,
+  HistorySource,
   Logger,
   Result,
   ShiftSnapshot,
@@ -49,4 +50,5 @@ export type Dependencies = {
   readonly auth: AuthUseCases;
   readonly accessControl: AccessControlUseCases;
   readonly sites: SitesUseCases;
+  readonly history: HistorySource;
 };

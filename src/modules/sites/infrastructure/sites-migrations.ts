@@ -1,3 +1,4 @@
+import { SHIFT_TABLES } from '@/shared/domain';
 import type { Migration } from '@/shared/infrastructure/db';
 
 export const SITES_MIGRATIONS: readonly Migration[] = [
@@ -15,4 +16,4 @@ export const SITES_MIGRATIONS: readonly Migration[] = [
   },
 ];
 
-export const SITES_TABLES = ['app_settings', 'shift_snapshot'] as const;
+export const SITES_TABLES = SHIFT_TABLES;

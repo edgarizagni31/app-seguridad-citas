@@ -50,6 +50,9 @@ export type ShiftSnapshot = {
   readonly blacklist: readonly BlacklistEntry[];
 };
 
+// Tablas que avisan cuando cambia la sede o el paquete del día
+export const SHIFT_TABLES = ['app_settings', 'shift_snapshot'] as const;
+
 export interface ShiftReader {
   current(): Promise<ShiftSnapshot | null>;
 }

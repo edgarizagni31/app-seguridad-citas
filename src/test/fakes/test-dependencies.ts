@@ -55,6 +55,7 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     auth: createFakeAuthUseCases(),
     accessControl: { readQr: readQr({ clock }) },
     sites: createFakeSitesUseCases(),
+    history: { tables: [], list: jest.fn(async () => []) },
     ...overrides,
   };
 }

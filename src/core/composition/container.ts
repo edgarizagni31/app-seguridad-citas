@@ -40,6 +40,7 @@ import {
   startSyncTriggers,
   SYNC_MIGRATIONS,
 } from '@/shared/infrastructure/sync';
+import { mergeHistory } from '@/shared/domain';
 import { toIsoDate } from '@/shared/lib';
 
 export type AppContainer = {
@@ -107,6 +108,8 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
+    // Los módulos de ingreso e inspección registran aquí sus fuentes
+    history: mergeHistory([]),
     auth: {
       login: login(authDeps),
       restoreSession: restoreSession(authDeps),

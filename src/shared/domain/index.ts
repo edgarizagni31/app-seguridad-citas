@@ -35,6 +35,7 @@ export {
   findBlacklisted,
   findVehicle,
   normalizeDocument,
+  normalizePlate,
   SHIFT_TABLES,
   type BlacklistEntry,
   type DocumentType,

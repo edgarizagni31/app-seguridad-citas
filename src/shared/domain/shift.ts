@@ -58,6 +58,7 @@ export interface ShiftReader {
 }
 
 export const normalizeDocument = (value: string) => value.replace(/[\s-]/g, '').toUpperCase();
+export const normalizePlate = normalizeDocument;
 
 export const findBlacklisted = (
   snapshot: Pick<ShiftSnapshot, 'blacklist'>,

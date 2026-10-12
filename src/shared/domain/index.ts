@@ -14,3 +14,12 @@ export {
   type Ok,
   type Result,
 } from './result';
+export type {
+  AttentionItem,
+  OutboxHandler,
+  OutboxItem,
+  OutboxStatus,
+  SendFailure,
+  SendOutcome,
+  SyncSnapshot,
+} from './sync';

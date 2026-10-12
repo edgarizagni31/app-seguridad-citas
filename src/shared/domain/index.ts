@@ -25,3 +25,17 @@ export type {
 } from './sync';
 export type { Connectivity } from './connectivity';
 export type { SyncService } from './sync';
+export {
+  findBlacklisted,
+  findVehicle,
+  normalizeDocument,
+  type BlacklistEntry,
+  type DocumentType,
+  type InspectionStatus,
+  type ShiftAppointment,
+  type ShiftReader,
+  type ShiftSnapshot,
+  type ShiftVehicle,
+  type ShiftVisitor,
+  type VisitorRole,
+} from './shift';

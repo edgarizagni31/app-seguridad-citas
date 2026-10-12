@@ -9,6 +9,8 @@ const VARIANTS = {
 type Variant = keyof typeof VARIANTS;
 
 const BASE_ID = 'com.ransa.portalcitas';
+// Android 10: los equipos de garita usan Android 10 y 11
+const MIN_ANDROID_SDK = 29;
 const CAMERA_PERMISSION = 'Usamos la cámara para escanear los códigos QR de las citas en garita.';
 
 function isVariant(value: string): value is Variant {
@@ -72,7 +74,12 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       // En development el servidor de Metro usa HTTP; fuera de él solo HTTPS
-      { android: variant === 'development' ? {} : { usesCleartextTraffic: false } },
+      {
+        android: {
+          minSdkVersion: MIN_ANDROID_SDK,
+          ...(variant !== 'development' && { usesCleartextTraffic: false }),
+        },
+      },
     ],
   ],
   experiments: {

@@ -13,5 +13,8 @@ export { IconButton } from './components/icon-button';
 export { Logo } from './components/logo';
 export { RoleChip } from './components/role-chip';
 export { Screen } from './components/screen';
+export { SyncBanner } from './components/sync-banner';
 export { TextField } from './components/text-field';
 export * from './theme';
+export { useLiveData } from './hooks/use-live-data';
+export { useOnlineStatus } from './hooks/use-online-status';

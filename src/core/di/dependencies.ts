@@ -1,6 +1,6 @@
 import type { ScanRecord } from '@/modules/access-control/domain';
 import type { AuthError, CredentialsError, Session } from '@/modules/auth/domain';
-import type { Clock, Logger, Result } from '@/shared/domain';
+import type { ChangeFeed, Clock, Connectivity, Logger, Result, SyncService } from '@/shared/domain';
 
 export type AppConfig = {
   readonly appVersion: string;
@@ -26,6 +26,9 @@ export type Dependencies = {
   readonly config: AppConfig;
   readonly logger: Logger;
   readonly clock: Clock;
+  readonly connectivity: Connectivity;
+  readonly changes: ChangeFeed;
+  readonly sync: SyncService;
   readonly auth: AuthUseCases;
   readonly accessControl: AccessControlUseCases;
 };

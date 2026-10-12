@@ -15,6 +15,15 @@ export const STRINGS = {
     unexpectedError: 'Ocurrió un error inesperado.',
     noConnection: 'Sin conexión con el servidor. Verifica tu red e inténtalo de nuevo.',
   },
+  sync: {
+    offlineTitle: 'Sin conexión',
+    offlineMessage: 'Puedes seguir trabajando. Los cambios se enviarán al reconectar.',
+    offlinePending: (count: number) =>
+      `${count} ${count === 1 ? 'registro pendiente' : 'registros pendientes'} de sincronizar.`,
+    syncing: (count: number) =>
+      `Sincronizando ${count} ${count === 1 ? 'registro pendiente' : 'registros pendientes'}…`,
+    syncNow: 'Sincronizar ahora',
+  },
   login: {
     title: 'Iniciar sesión',
     subtitle: 'Usa tu cuenta de Ransa 360',

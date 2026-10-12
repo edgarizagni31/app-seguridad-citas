@@ -6,7 +6,18 @@ export {
   type CredentialsError,
 } from './credentials';
 export type { AuthGateway, DecodedIdentity, SessionStorage, TokenDecoder } from './ports';
-export { canAccessGate, SECURITY_ROLES } from './roles';
+export {
+  canInspect,
+  canManageEntry,
+  canUseApp,
+  HSE_ROLES,
+  isInspector,
+  primaryRoleOf,
+  sectionsFor,
+  SECURITY_ROLES,
+  type AppSection,
+  type PrimaryRole,
+} from './roles';
 export {
   firstNameOf,
   isExpired,

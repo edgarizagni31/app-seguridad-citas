@@ -1,4 +1,11 @@
-import type { ScanRecord } from '@/modules/access-control/domain';
+import type {
+  ScanRecord,
+  UnitValidation,
+  UnitValidationError,
+  VisitorDocument,
+  VisitorValidation,
+  VisitorValidationError,
+} from '@/modules/access-control/domain';
 import type { AuthError, CredentialsError, Session } from '@/modules/auth/domain';
 import type { ShiftStatus, Site, SitesError } from '@/modules/sites/domain';
 import type {
@@ -30,6 +37,10 @@ export type AuthUseCases = {
 
 export type AccessControlUseCases = {
   readonly readQr: (rawContent: string) => ScanRecord;
+  readonly validateUnit: (token: string) => Promise<Result<UnitValidation, UnitValidationError>>;
+  readonly validateVisitor: (
+    visitor: VisitorDocument & { readonly voucherId: string },
+  ) => Promise<Result<VisitorValidation, VisitorValidationError>>;
 };
 
 export type SitesUseCases = {

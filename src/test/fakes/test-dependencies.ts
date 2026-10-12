@@ -1,6 +1,6 @@
-import type { AuthUseCases, Dependencies, SitesUseCases } from '@/core/di';
+import type { AccessControlUseCases, AuthUseCases, Dependencies, SitesUseCases } from '@/core/di';
 import { readQr } from '@/modules/access-control/application';
-import { ok, type Logger } from '@/shared/domain';
+import { err, ok, type Clock, type Logger } from '@/shared/domain';
 import { createChangeBus } from '@/shared/infrastructure/db';
 import { buildDemoSnapshot } from '@/shared/infrastructure/demo';
 
@@ -43,6 +43,16 @@ export const createFakeSitesUseCases = (overrides: Partial<SitesUseCases> = {}) 
   };
 };
 
+export const createFakeAccessControl = (
+  clock: Clock,
+  overrides: Partial<AccessControlUseCases> = {},
+): AccessControlUseCases => ({
+  readQr: readQr({ clock }),
+  validateUnit: jest.fn(async () => err({ type: 'no-shift' as const })),
+  validateVisitor: jest.fn(async () => ok({ checkedBy: 'server' as const })),
+  ...overrides,
+});
+
 export function createTestDependencies(overrides: Partial<Dependencies> = {}): Dependencies {
   const clock = overrides.clock ?? createFixedClock();
   return {
@@ -53,7 +63,7 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     changes: createChangeBus(),
     sync: createFakeSync(),
     auth: createFakeAuthUseCases(),
-    accessControl: { readQr: readQr({ clock }) },
+    accessControl: createFakeAccessControl(clock),
     sites: createFakeSitesUseCases(),
     history: { tables: [], list: jest.fn(async () => []) },
     ...overrides,

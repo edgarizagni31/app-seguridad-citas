@@ -2,7 +2,11 @@ import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import type { Dependencies } from '@/core/di';
-import { readQr } from '@/modules/access-control/application';
+import { readQr, validateUnit, validateVisitor } from '@/modules/access-control/application';
+import {
+  createMockAccessGateway,
+  es256VehicleQrVerifier,
+} from '@/modules/access-control/infrastructure';
 import { login, logout, refreshSession, restoreSession } from '@/modules/auth/application';
 import {
   createMockAuthGateway,
@@ -95,6 +99,13 @@ export function createContainer(env: Env): AppContainer {
     today,
   };
   const closeShift = endShift(sitesDeps);
+  const validationDeps = {
+    shift: shiftStore,
+    verifier: es256VehicleQrVerifier,
+    gateway: createMockAccessGateway({ isOnline: connectivity.isOnline }),
+    isOnline: connectivity.isOnline,
+    clock,
+  };
   const signOut = logout(authDeps);
 
   const dependencies: Dependencies = {
@@ -123,6 +134,8 @@ export function createContainer(env: Env): AppContainer {
     },
     accessControl: {
       readQr: readQr({ clock }),
+      validateUnit: validateUnit(validationDeps),
+      validateVisitor: validateVisitor(validationDeps),
     },
     sites: {
       listSites: listSites(sitesDeps),

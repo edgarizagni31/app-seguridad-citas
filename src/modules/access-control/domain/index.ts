@@ -1,3 +1,11 @@
+export type { AccessGatewayError, AccessValidationGateway, ServerVerdict } from './access-gateway';
+export type {
+  CheckedBy,
+  UnitValidation,
+  UnitValidationError,
+  VisitorValidation,
+  VisitorValidationError,
+} from './access-validation';
 export { parseQrContent, type QrContent, type QrContentKind } from './qr-content';
 export { QR_RULES } from './qr-rules';
 export type { ScanRecord } from './scan-record';

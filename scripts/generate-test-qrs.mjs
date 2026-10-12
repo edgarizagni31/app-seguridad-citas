@@ -1,4 +1,7 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+
+import { p256 } from '@noble/curves/nist.js';
+import { hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import QRCode from 'qrcode';
 
 const OUTPUT = 'docs/qr-pruebas';
@@ -28,6 +31,93 @@ const CASES = [
     expected: 'No reconocido (501 caracteres)',
   },
 ];
+
+// Clave de desarrollo: se lee de su única fuente para no duplicarla
+const keySource = await readFile('src/shared/infrastructure/demo/dev-qr-keys.ts', 'utf8');
+const DEV_PRIVATE_KEY = hexToBytes(keySource.match(/'([0-9a-f]{64})'/)[1]);
+
+const base64Url = (bytes) => Buffer.from(bytes).toString('base64url');
+const signVehicleQr = (claims, privateKey = DEV_PRIVATE_KEY) => {
+  const input = `${base64Url(utf8ToBytes(JSON.stringify({ alg: 'ES256', typ: 'JWT' })))}.${base64Url(utf8ToBytes(JSON.stringify(claims)))}`;
+  return `${input}.${base64Url(p256.sign(utf8ToBytes(input), privateKey))}`;
+};
+
+const nowSeconds = Math.floor(Date.now() / 1000);
+const DAY = 24 * 3600;
+const person = (id, n, dn, r) => ({ id, n, dt: 'DUI', dn, r });
+const LUIS = person('vis-luis', 'Luis Hernández', '04512378-9', 'DRIVER');
+const MARIO = person('vis-mario', 'Mario Rivas', '05873214-2', 'HELPER');
+const PEDRO = person('vis-pedro', 'Pedro Aguilar', '01987654-3', 'HELPER');
+const vehicleQr = (overrides) =>
+  signVehicleQr(
+    {
+      jti: `qr-${overrides.plt}-${overrides.jti ?? 'demo'}`,
+      sid: 'site-central',
+      apt: 'apt-delosi',
+      vch: 'voucher-093',
+      vcd: 'APPASP0000000000000093',
+      iat: nowSeconds,
+      exp: nowSeconds + 30 * DAY,
+      vis: [LUIS, MARIO, PEDRO],
+      ...overrides,
+    },
+    overrides.key,
+  );
+
+// QR firmados del vehículo (sede Almacén Central del modo demo)
+CASES.push(
+  {
+    file: '08-vehiculo-abc-123',
+    content: vehicleQr({ plt: 'ABC-123' }),
+    expected: 'Vehículo ABC-123 · 3 visitantes por ingresar',
+  },
+  {
+    file: '09-vehiculo-llegada-tardia',
+    content: vehicleQr({
+      plt: 'XYZ-789',
+      vis: [
+        person('vis-ana', 'Ana Castillo', '03456789-1', 'DRIVER'),
+        person('vis-rosa', 'Rosa Méndez', '06123456-7', 'HELPER'),
+      ],
+    }),
+    expected: 'Vehículo XYZ-789 ya ingresó · llegada tardía de Rosa',
+  },
+  {
+    file: '10-vehiculo-ya-ingreso',
+    content: vehicleQr({
+      plt: 'MNP-456',
+      apt: 'apt-dollarcity',
+      vch: 'voucher-094',
+      vcd: 'APPASP0000000000000094',
+      vis: [person('vis-jorge', 'Jorge Molina', '02345678-0', 'DRIVER')],
+    }),
+    expected: 'Rechazo: la unidad ya ingresó',
+  },
+  {
+    file: '11-vehiculo-otra-sede',
+    content: vehicleQr({ plt: 'ABC-123', sid: 'site-norte' }),
+    expected: 'Rechazo: QR de otra sede',
+  },
+  {
+    file: '12-vehiculo-vencido',
+    content: vehicleQr({ plt: 'ABC-123', iat: nowSeconds - 2 * DAY, exp: nowSeconds - DAY }),
+    expected: 'Rechazo: QR vencido',
+  },
+  {
+    file: '13-vehiculo-falsificado',
+    content: vehicleQr({ plt: 'ABC-123', key: p256.utils.randomSecretKey() }),
+    expected: 'Rechazo: firma inválida',
+  },
+  {
+    file: '14-vehiculo-lista-negra',
+    content: vehicleQr({
+      plt: 'ABC-123',
+      jti: 'lista-negra',
+      vis: [LUIS, person('vis-raul', 'Raúl Pineda', '09876543-2', 'HELPER')],
+    }),
+    expected: 'ABC-123 · Raúl está en la lista negra',
+  },
+);
 
 const escape = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 

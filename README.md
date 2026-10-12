@@ -1,8 +1,12 @@
 # Portal Citas · Control de Garita
 
-App móvil (Android e iOS) para el personal de seguridad en la garita de los almacenes de Ransa. Permite iniciar sesión con la cuenta de Ransa 360 y escanear los códigos QR de las unidades de transporte, los vouchers y los pases de visitante.
+App móvil (Android 10+ e iOS) para la garita de los almacenes de Ransa.
 
-**Stack:** Expo SDK 57, React Native 0.86, TypeScript estricto, Expo Router, Zustand, Zod y Jest + Testing Library.
+- **Seguridad:** escanea el QR firmado del vehículo, marca qué visitantes llegaron, agrega visitantes y confirma el ingreso. Si alguien llega tarde, se vuelve a escanear el QR.
+- **HSE:** ve los vehículos ingresados del día agrupados por cita y hace la inspección vehicular de 15 pasos con fotos.
+- **Sin conexión:** todo se guarda primero en el teléfono (SQLite) y se envía al reconectar. Si el servidor rechaza algo hecho sin red, avisa con una notificación y lo deja en "Requiere atención".
+
+**Stack:** Expo SDK 57, React Native 0.86, TypeScript estricto, Expo Router, Zustand, Zod, expo-sqlite, NetInfo, @noble/curves (QR ES256) y Jest + Testing Library.
 
 ## Requisitos (Windows)
 
@@ -45,13 +49,20 @@ La contraseña de todos es `demo123`.
 | Correo                 | Resultado                                      |
 | ---------------------- | ---------------------------------------------- |
 | `seguridad@demo.ransa` | Ingresa con rol de seguridad                   |
+| `hse@demo.ransa`       | Ingresa con rol HSE (Inspecciones)             |
+| `jefe@demo.ransa`      | Ingresa con ambos roles (todas las pestañas)   |
 | `cliente@demo.ransa`   | Ingresa sin rol de seguridad (acceso denegado) |
 | `cambio@demo.ransa`    | Debe cambiar la contraseña                     |
 | `sinred@demo.ransa`    | Simula un fallo de red                         |
 
-### QR de prueba
+### Datos del turno y QR de prueba
 
-`npm run qr:generate` genera en `docs/qr-pruebas/` un PNG por caso y un `index.html` para escanearlos desde la pantalla del PC.
+Con el backend aún sin estos endpoints, la app usa **adaptadores mock** (ver `docs/CONTRATO-API-INGRESO-INSPECCION.md`, local):
+
+- Al iniciar sesión se elige la sede ("Almacén Central" o "Almacén Norte") y se descarga el **paquete del día** de ejemplo. Sus horarios son relativos a la hora de la descarga, así que la demo funciona a cualquier hora. "Mi perfil → Actualizar datos" lo vuelve a generar.
+- `npm run qr:generate` genera en `docs/qr-pruebas/` un PNG por caso y un `index.html` para escanearlos desde la pantalla del PC. Incluye los QR firmados del vehículo (casos 08 a 14) para la sede **Almacén Central**: ingreso normal, llegada tardía, unidad ya ingresada, otra sede, vencido, firma falsa y visitante en lista negra.
+- Los QR se firman con una **clave de desarrollo** (`src/shared/infrastructure/demo/dev-qr-keys.ts`). En producción la clave pública llega en el paquete del día y la privada solo existe en el backend.
+- Para probar un rechazo del servidor, agrega un visitante con el DUI `07777777-7` sin conexión y luego reconecta: aparece la notificación y el registro en "Requiere atención".
 
 ## Scripts
 
@@ -72,12 +83,20 @@ La contraseña de todos es `demo123`.
 Monolito modular por dominios + Clean/Hexagonal + MVVM. Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```
-src/app/            Rutas (Expo Router), solo re-exportan pantallas
-src/modules/auth/   Sesión R360: dominio, casos de uso, adaptadores, pantallas
-src/modules/access-control/   Lectura e interpretación de QR en garita
-src/shared/         Kernel común: Result, logger, cliente HTTP, design system
-src/core/           Inyección de dependencias y composition root
+src/app/                        Rutas (Expo Router), solo re-exportan pantallas
+src/modules/auth/               Sesión R360, roles (Seguridad y HSE)
+src/modules/sites/              Sede y paquete del día
+src/modules/access-control/     QR firmado, validación de la unidad e ingreso de visitantes
+src/modules/vehicle-inspection/ Tablero HSE, cuestionario como datos, fotos e inspección
+src/modules/history/            Historial del turno y bandeja "Requiere atención"
+src/modules/profile/            Mi perfil
+src/shared/                     Kernel común: Result, SQLite, outbox y sincronización, design system
+src/core/                       Inyección de dependencias y composition root
 ```
+
+- **Offline:** cada escritura se guarda en SQLite junto con su envío en la outbox (misma transacción). El motor de sincronización respeta el orden de cada registro, reintenta con backoff y se dispara al recuperar la red, al volver a la app y después de cada escritura.
+- **Base local sin cifrar:** la app sigue funcionando en Expo Go. Las fotos y los registros se borran al sincronizarse o al cerrar el turno. Ver `docs/adr/0004`.
+- **Rutas tipadas:** `npm start` genera `.expo/types`. En un clon nuevo, ejecútalo una vez antes de `npm run typecheck`.
 
 ## Builds con EAS (pasos manuales)
 
@@ -87,3 +106,5 @@ src/core/           Inyección de dependencias y composition root
 4. `npx eas-cli@latest build --profile development|preview|production`
 
 Los perfiles definen `APP_VARIANT`, así que las variantes Dev, QA y Producción pueden convivir instaladas en el mismo teléfono.
+
+El mínimo de **Android 10** (`minSdkVersion 29`) solo se aplica al compilar. Para probar el arranque en frío sin red, el modo avión y la cámara en un Android 10/11 real, usa un build `preview`: Expo Go no reproduce esas condiciones igual que la app instalada.

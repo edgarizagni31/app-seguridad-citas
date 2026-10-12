@@ -59,6 +59,7 @@ import {
   answerInspection,
   boardTables,
   capturePhoto,
+  cleanupStaleDrafts,
   createInspectionSyncHandler,
   discardCapture,
   finishInspection,
@@ -76,7 +77,8 @@ import {
   INSPECTION_MIGRATIONS,
 } from '@/modules/vehicle-inspection/infrastructure';
 import { mergeHistory } from '@/shared/domain';
-import { toIsoDate } from '@/shared/lib';
+import { createExpoNotificationsService } from '@/shared/infrastructure/notifications';
+import { STRINGS, toIsoDate } from '@/shared/lib';
 
 export type AppContainer = {
   readonly dependencies: Dependencies;
@@ -130,6 +132,11 @@ export function createContainer(env: Env): AppContainer {
   const photoStore = createExpoPhotoStore({ createId: Crypto.randomUUID });
   const inspectionGateway = createMockInspectionGateway({ isOnline: connectivity.isOnline });
 
+  const notifications = createExpoNotificationsService({
+    logger,
+    channelName: STRINGS.attention.channel,
+  });
+
   const sync = createSyncEngine({
     store: createOutboxStore(db),
     handlers: [
@@ -145,6 +152,13 @@ export function createContainer(env: Env): AppContainer {
     changes,
     isOnline: connectivity.isOnline,
     createId: Crypto.randomUUID,
+    // RF-H3: un rechazo del servidor avisa al instante, sin datos personales en el texto
+    onAttention: (item) =>
+      void notifications.notify({
+        title: STRINGS.attention.notificationTitle,
+        body: STRINGS.attention.notificationBody(item.title),
+        target: 'attention',
+      }),
   });
 
   const shiftStore = createSqliteShiftStore(db, changes);
@@ -187,6 +201,20 @@ export function createContainer(env: Env): AppContainer {
       return result;
     };
   const closeShift = withCleanup(endShift(sitesDeps));
+  const downloadShift = startShift(sitesDeps);
+  // Al cambiar de día se descartan los registros ya sincronizados del turno anterior
+  const startShiftWithRetention: Dependencies['sites']['startShift'] = async (site) => {
+    const previous = await shiftStore.snapshot();
+    const result = await downloadShift(site);
+    if (!result.ok) return result;
+    try {
+      if (previous && previous.date !== result.value.date) await clearShiftData();
+      await cleanupStaleDrafts(inspectionDeps)(result.value);
+    } catch (error) {
+      logger.error('No se pudo aplicar la retención del turno', { error: String(error) });
+    }
+    return result;
+  };
   const signOut = logout(authDeps);
 
   const dependencies: Dependencies = {
@@ -200,6 +228,7 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
+    notifications,
     history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),
     inspections: {
       board: loadBoard(inspectionDeps),
@@ -241,7 +270,7 @@ export function createContainer(env: Env): AppContainer {
     sites: {
       listSites: listSites(sitesDeps),
       shiftStatus: shiftStatus(sitesDeps),
-      startShift: startShift(sitesDeps),
+      startShift: startShiftWithRetention,
       endShift: closeShift,
       changeSite: withCleanup(changeSite(sitesDeps)),
     },

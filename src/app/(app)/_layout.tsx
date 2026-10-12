@@ -3,14 +3,18 @@ import { Stack } from 'expo-router';
 import { RoleGate } from '@/modules/auth';
 import { ShiftGate } from '@/modules/sites';
 
+import { NotificationsBridge } from '@/core/composition';
+
 export { RouteErrorBoundary as ErrorBoundary } from '@/core/composition';
 
 export default function AppLayout() {
   return (
     <RoleGate>
       <ShiftGate>
+        <NotificationsBridge />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="attention" />
           <Stack.Screen name="entry/visitors" />
           <Stack.Screen
             name="entry/add-visitor"

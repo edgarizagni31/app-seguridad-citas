@@ -28,6 +28,7 @@ import type {
   Connectivity,
   HistorySource,
   Logger,
+  NotificationsService,
   Result,
   ShiftSnapshot,
   SyncService,
@@ -101,6 +102,7 @@ export type Dependencies = {
   readonly connectivity: Connectivity;
   readonly changes: ChangeFeed;
   readonly sync: SyncService;
+  readonly notifications: NotificationsService;
   readonly auth: AuthUseCases;
   readonly accessControl: AccessControlUseCases;
   readonly sites: SitesUseCases;

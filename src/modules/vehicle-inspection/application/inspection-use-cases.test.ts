@@ -8,6 +8,7 @@ import { silentLogger } from '@/test/fakes/test-dependencies';
 import {
   answerInspection,
   capturePhoto,
+  cleanupStaleDrafts,
   finishInspection,
   openInspection,
   reportMismatch,
@@ -252,5 +253,20 @@ describe('cierre', () => {
       ok: true,
       value: { id: 'insp-9', state: 'submitted' },
     });
+  });
+});
+
+describe('cleanupStaleDrafts', () => {
+  it('borra los borradores y sus fotos de vehículos que ya no están en el paquete', async () => {
+    const context = setup();
+    const { id } = await opened(context);
+    const cleanup = cleanupStaleDrafts(context.deps);
+
+    await cleanup(SNAPSHOT);
+    expect(context.deps.repo.delete).not.toHaveBeenCalled();
+
+    await cleanup({ appointments: [] });
+    expect(context.deps.photos.deleteAll).toHaveBeenCalledWith(id);
+    expect(context.deps.repo.delete).toHaveBeenCalledWith(id);
   });
 });

@@ -84,6 +84,7 @@ export interface InspectionRepository {
   markSynced(id: string): Promise<void>;
   markRejected(id: string, message: string): Promise<void>;
   clearSynced(): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export type Inspector = { readonly id: string; readonly name: string };

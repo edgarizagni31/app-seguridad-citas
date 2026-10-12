@@ -24,6 +24,7 @@ export type {
   SyncSnapshot,
 } from './sync';
 export type { Connectivity } from './connectivity';
+export type { LocalNotification, NotificationsService } from './notifications';
 export {
   mergeHistory,
   type HistoryEntry,

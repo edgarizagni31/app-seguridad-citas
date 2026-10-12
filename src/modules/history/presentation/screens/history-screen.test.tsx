@@ -1,10 +1,16 @@
 import { screen, userEvent } from '@testing-library/react-native';
+import { useRouter } from 'expo-router';
 
 import type { HistoryEntry } from '@/shared/domain';
 import { createFakeSync } from '@/test/fakes/sync';
 import { renderWithDeps } from '@/test/render-with-deps';
 
 import { HistoryScreen } from './history-screen';
+
+jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
+
+const router = { push: jest.fn() };
+beforeEach(() => jest.mocked(useRouter).mockReturnValue(router as never));
 
 const ENTRY: HistoryEntry = {
   id: 'entry-1',
@@ -37,7 +43,7 @@ describe('HistoryScreen', () => {
     expect(screen.getByText('Pendiente')).toBeOnTheScreen();
   });
 
-  it('muestra lo que requiere atención y permite descartarlo', async () => {
+  it('resume lo que requiere atención y abre la bandeja', async () => {
     const user = userEvent.setup();
     const sync = createFakeSync();
     sync.setAttention([
@@ -53,10 +59,9 @@ describe('HistoryScreen', () => {
     ]);
     await renderWithDeps(<HistoryScreen />, { sync });
 
-    expect(await screen.findByRole('heading', { name: 'Requiere atención' })).toBeOnTheScreen();
-    expect(screen.getByText('Un visitante está en la lista negra.')).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Descartar' }));
+    expect(await screen.findByText('1 registro rechazado por el servidor')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Ver lo que requiere atención' }));
 
-    expect(sync.dismissAttention).toHaveBeenCalledWith('att-1');
+    expect(router.push).toHaveBeenCalledWith('/attention');
   });
 });

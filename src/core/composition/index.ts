@@ -1,5 +1,6 @@
 export { AppProviders } from './app-providers';
 export { createContainer } from './container';
+export { NotificationsBridge } from './notifications-bridge';
 export { RootNavigator } from './root-navigator';
 export { RouteErrorBoundary } from './route-error-boundary';
 export { SyncStatusBanner } from './sync-status-banner';

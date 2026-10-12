@@ -27,7 +27,7 @@ export function HistoryScreen() {
             </AppText>
             <AppText color={colors.textMuted}>{TEXT.subtitle}</AppText>
             {vm.attention.length > 0 && (
-              <AttentionCard items={vm.attention} onDismiss={vm.dismiss} />
+              <AttentionCard count={vm.attention.length} onOpen={vm.openAttention} />
             )}
           </View>
         }

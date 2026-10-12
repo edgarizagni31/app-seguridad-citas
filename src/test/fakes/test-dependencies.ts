@@ -89,6 +89,11 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     connectivity: createFakeConnectivity(),
     changes: createChangeBus(),
     sync: createFakeSync(),
+    notifications: {
+      prepare: jest.fn(async () => undefined),
+      notify: jest.fn(async () => undefined),
+      onOpen: jest.fn(() => () => undefined),
+    },
     auth: createFakeAuthUseCases(),
     accessControl: createFakeAccessControl(clock),
     sites: createFakeSitesUseCases(),

@@ -106,5 +106,9 @@ export function createSqliteInspectionRepository(deps: {
       await db.run("DELETE FROM inspections WHERE sync_status = 'synced'");
       notify();
     },
+    async delete(id) {
+      await db.run('DELETE FROM inspections WHERE id = ?', [id]);
+      notify();
+    },
   };
 }

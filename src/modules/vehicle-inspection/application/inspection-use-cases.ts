@@ -29,6 +29,7 @@ import {
   type Logger,
   type Result,
   type ShiftReader,
+  type ShiftSnapshot,
   SHIFT_TABLES,
 } from '@/shared/domain';
 
@@ -221,3 +222,23 @@ export const boardTables = (deps: Pick<InspectionDeps, 'entries' | 'repo'>) => [
   ...deps.entries.tables,
   ...deps.repo.tables,
 ];
+
+// Retención: un borrador de un vehículo que ya no está en el paquete del día no se puede retomar
+export const cleanupStaleDrafts =
+  (deps: Pick<InspectionDeps, 'repo' | 'photos' | 'logger'>) =>
+  async (snapshot: Pick<ShiftSnapshot, 'appointments'>) => {
+    const current = new Set(
+      snapshot.appointments.flatMap((appointment) =>
+        appointment.vehicles.map((vehicle) => vehicle.id),
+      ),
+    );
+    const stale = (await deps.repo.list()).filter(
+      (inspection) => inspection.state === 'draft' && !current.has(inspection.vehicleId),
+    );
+    for (const inspection of stale) {
+      await deps.photos.deleteAll(inspection.id);
+      await deps.repo.delete(inspection.id);
+    }
+    if (stale.length > 0)
+      deps.logger.info('Borradores vencidos eliminados', { count: stale.length });
+  };

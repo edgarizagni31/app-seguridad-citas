@@ -29,3 +29,18 @@ export {
   type VisitorDocument,
   type VisitorRejection,
 } from './visitor-policy';
+export {
+  addVisitor,
+  arrivedVisitorIds,
+  blockVisitor,
+  confirmDraft,
+  entrySummary,
+  markVisitor,
+  startDraft,
+  type ArrivalStatus,
+  type EntryDraft,
+  type EntryError,
+  type EntryVisitor,
+  type NewVisitor,
+  type VehicleEntryRecord,
+} from './vehicle-entry';

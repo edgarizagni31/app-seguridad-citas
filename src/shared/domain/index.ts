@@ -32,6 +32,7 @@ export {
 } from './history';
 export { SYNC_TABLES, type SyncService } from './sync';
 export {
+  applyEntries,
   findBlacklisted,
   findVehicle,
   normalizeDocument,
@@ -39,7 +40,9 @@ export {
   SHIFT_TABLES,
   type BlacklistEntry,
   type DocumentType,
+  type EntryLog,
   type InspectionStatus,
+  type LocalEntry,
   type ShiftAppointment,
   type ShiftReader,
   type ShiftSnapshot,

@@ -78,3 +78,40 @@ export function findVehicle(snapshot: Pick<ShiftSnapshot, 'appointments'>, vehic
   }
   return null;
 }
+
+// Ingreso confirmado en este dispositivo que el paquete del día todavía no refleja
+export type LocalEntry = {
+  readonly vehicleId: string;
+  readonly enteredAt: string;
+  readonly visitorIds: readonly string[];
+};
+
+export interface EntryLog {
+  readonly tables: readonly string[];
+  list(): Promise<LocalEntry[]>;
+}
+
+export function applyEntries(
+  snapshot: ShiftSnapshot,
+  entries: readonly LocalEntry[],
+): ShiftSnapshot {
+  if (entries.length === 0) return snapshot;
+  return {
+    ...snapshot,
+    appointments: snapshot.appointments.map((appointment) => ({
+      ...appointment,
+      vehicles: appointment.vehicles.map((vehicle) => {
+        const own = entries.filter((entry) => entry.vehicleId === vehicle.id);
+        if (own.length === 0) return vehicle;
+        const firstEntry = own.map((entry) => entry.enteredAt).sort()[0] ?? null;
+        return {
+          ...vehicle,
+          enteredAt: vehicle.enteredAt ?? firstEntry,
+          enteredVisitorIds: [
+            ...new Set([...vehicle.enteredVisitorIds, ...own.flatMap((entry) => entry.visitorIds)]),
+          ],
+        };
+      }),
+    })),
+  };
+}

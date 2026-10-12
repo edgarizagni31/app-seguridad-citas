@@ -11,6 +11,18 @@ import {
   secureStoreSessionStorage,
 } from '@/modules/auth/infrastructure';
 import {
+  changeSite,
+  endShift,
+  listSites,
+  shiftStatus,
+  startShift,
+} from '@/modules/sites/application';
+import {
+  createMockSitesGateways,
+  createSqliteShiftStore,
+  SITES_MIGRATIONS,
+} from '@/modules/sites/infrastructure';
+import {
   createHttpClient,
   createLogger,
   netInfoConnectivity,
@@ -28,6 +40,7 @@ import {
   startSyncTriggers,
   SYNC_MIGRATIONS,
 } from '@/shared/infrastructure/sync';
+import { toIsoDate } from '@/shared/lib';
 
 export type AppContainer = {
   readonly dependencies: Dependencies;
@@ -40,7 +53,11 @@ export function createContainer(env: Env): AppContainer {
   const clock = systemClock;
   const connectivity = netInfoConnectivity;
   const changes = createChangeBus();
-  const db = createLazyDatabase(() => openExpoSqliteDatabase(), [...SYNC_MIGRATIONS]);
+  const db = createLazyDatabase(
+    () => openExpoSqliteDatabase(),
+    [...SYNC_MIGRATIONS, ...SITES_MIGRATIONS],
+  );
+  const today = () => toIsoDate(clock.now(), env.timeZone);
 
   const r360Http = createHttpClient({
     baseUrl: env.r360ApiUrl,
@@ -69,6 +86,16 @@ export function createContainer(env: Env): AppContainer {
     createId: Crypto.randomUUID,
   });
 
+  // Backend sin estos endpoints todavía: mock hasta implementar el contrato (docs/CONTRATO-API-*)
+  const shiftStore = createSqliteShiftStore(db, changes);
+  const sitesDeps = {
+    ...createMockSitesGateways({ clock, isOnline: connectivity.isOnline }),
+    store: shiftStore,
+    today,
+  };
+  const closeShift = endShift(sitesDeps);
+  const signOut = logout(authDeps);
+
   const dependencies: Dependencies = {
     config: {
       appVersion: env.appVersion,
@@ -84,10 +111,22 @@ export function createContainer(env: Env): AppContainer {
       login: login(authDeps),
       restoreSession: restoreSession(authDeps),
       refreshSession: refreshSession(authDeps),
-      logout: logout(authDeps),
+      // Cerrar sesión también descarta el paquete del día (datos locales del turno)
+      logout: async () => {
+        const cleared = await closeShift();
+        if (!cleared.ok) logger.error('No se pudo limpiar el turno', { error: cleared.error.type });
+        return signOut();
+      },
     },
     accessControl: {
       readQr: readQr({ clock }),
+    },
+    sites: {
+      listSites: listSites(sitesDeps),
+      shiftStatus: shiftStatus(sitesDeps),
+      startShift: startShift(sitesDeps),
+      endShift: closeShift,
+      changeSite: changeSite(sitesDeps),
     },
   };
 

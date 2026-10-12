@@ -24,6 +24,23 @@ export const STRINGS = {
       `Sincronizando ${count} ${count === 1 ? 'registro pendiente' : 'registros pendientes'}…`,
     syncNow: 'Sincronizar ahora',
   },
+  sites: {
+    chooseTitle: 'Elige tu sede',
+    chooseSubtitle: 'Selecciona el almacén donde trabajarás este turno.',
+    loading: 'Cargando sedes…',
+    preparingTitle: 'Preparando tu turno',
+    preparingMessage: (site: string) =>
+      `Descargando los datos del día de ${site} para que puedas trabajar sin conexión.`,
+    offlineTitle: 'Necesitas conexión para iniciar el turno',
+    offlineMessage:
+      'Conéctate a internet para descargar los datos del día. Después podrás trabajar sin conexión.',
+    errorTitle: 'No pudimos preparar tu turno',
+    noSites: 'Tu usuario no tiene sedes asignadas. Solicítalas a tu administrador.',
+    changeSite: 'Cambiar sede',
+    updateData: 'Actualizar datos',
+    updatedAgo: (minutes: number) =>
+      minutes < 1 ? 'Actualizado hace un momento' : `Actualizado hace ${minutes} min`,
+  },
   login: {
     title: 'Iniciar sesión',
     subtitle: 'Usa tu cuenta de Ransa 360',

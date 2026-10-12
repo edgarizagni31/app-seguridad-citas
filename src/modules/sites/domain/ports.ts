@@ -17,4 +17,5 @@ export interface ShiftStore {
   snapshot(): Promise<ShiftSnapshot | null>;
   saveSnapshot(snapshot: ShiftSnapshot): Promise<void>;
   clear(): Promise<void>;
+  clearSelectedSite(): Promise<void>;
 }

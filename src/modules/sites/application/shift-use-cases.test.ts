@@ -1,7 +1,7 @@
 import type { ShiftStore, Site } from '../domain';
 import { err, ok, type ShiftSnapshot } from '@/shared/domain';
 
-import { endShift, listSites, shiftStatus, startShift } from './shift-use-cases';
+import { changeSite, endShift, listSites, shiftStatus, startShift } from './shift-use-cases';
 
 const SITE: Site = { id: 'site-central', name: 'Almacén Central' };
 const snapshot = (overrides: Partial<ShiftSnapshot> = {}) =>
@@ -21,6 +21,9 @@ function createMemoryStore(initial: { site?: Site; snapshot?: ShiftSnapshot } = 
     }),
     clear: jest.fn(async () => {
       current = null;
+    }),
+    clearSelectedSite: jest.fn(async () => {
+      site = null;
     }),
   } satisfies ShiftStore;
 }
@@ -126,5 +129,14 @@ describe('startShift / endShift', () => {
 
     expect(await store.snapshot()).toBeNull();
     expect(await store.selectedSite()).toEqual(SITE);
+  });
+
+  it('cambiar sede descarta el paquete y la sede elegida', async () => {
+    const store = createMemoryStore({ site: SITE, snapshot: snapshot() });
+
+    await changeSite({ store })();
+
+    expect(await store.snapshot()).toBeNull();
+    expect(await store.selectedSite()).toBeNull();
   });
 });

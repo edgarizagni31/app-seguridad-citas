@@ -2,6 +2,7 @@ import {
   isSnapshotForDate,
   type ShiftGateway,
   type ShiftStore,
+  type ShiftStatus,
   type Site,
   type SitesError,
   type SitesGateway,
@@ -14,11 +15,6 @@ export type ShiftDeps = {
   readonly store: ShiftStore;
   readonly today: () => string;
 };
-
-export type ShiftStatus =
-  | { readonly type: 'no-site' }
-  | { readonly type: 'needs-download'; readonly site: Site }
-  | { readonly type: 'ready'; readonly site: Site; readonly snapshot: ShiftSnapshot };
 
 const wrapStorage = async <T>(task: () => Promise<T>): Promise<Result<T, SitesError>> => {
   try {
@@ -62,3 +58,9 @@ export const startShift =
 
 export const endShift = (deps: Pick<ShiftDeps, 'store'>) => () =>
   wrapStorage(() => deps.store.clear());
+
+export const changeSite = (deps: Pick<ShiftDeps, 'store'>) => () =>
+  wrapStorage(async () => {
+    await deps.store.clear();
+    await deps.store.clearSelectedSite();
+  });

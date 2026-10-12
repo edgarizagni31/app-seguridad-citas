@@ -46,6 +46,10 @@ export function createSqliteShiftStore(
       cached = next;
       changes.emit(SITES_TABLES);
     },
+    async clearSelectedSite() {
+      await db.run('DELETE FROM app_settings WHERE key = ?', [SELECTED_SITE]);
+      changes.emit(SITES_TABLES);
+    },
     // La sede elegida se recuerda; el paquete del día se descarta
     async clear() {
       await db.run('DELETE FROM shift_snapshot');

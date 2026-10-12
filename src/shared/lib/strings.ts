@@ -144,6 +144,7 @@ export const STRINGS = {
       transportUnit: 'Unidad de transporte',
       voucher: 'Voucher',
       visitorPass: 'Pase de visitante',
+      vehicleToken: 'QR del vehículo',
       unknown: 'No reconocido',
     },
     notes: {
@@ -151,6 +152,7 @@ export const STRINGS = {
       voucher:
         'Este QR corresponde al voucher, no a una unidad. Escanea el QR de la unidad que incluye la placa.',
       visitorPass: 'Pase de visitante leído. Su registro se realiza en el paso de visitantes.',
+      vehicleToken: 'QR firmado del vehículo. Se valida en el flujo de ingreso.',
       unknown: 'El contenido no corresponde a ningún formato de QR del portal.',
     },
   },

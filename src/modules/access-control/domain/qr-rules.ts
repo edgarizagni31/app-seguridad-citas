@@ -4,4 +4,7 @@ export const QR_RULES = {
   generatedCodePattern: /^[A-Z]+\d+$/,
   visitorPassPrefix: 'PASS-',
   maxContentLength: 500,
+  // JWT compacto: header.payload.firma en base64url
+  signedTokenPattern: /^[\w-]+\.[\w-]+\.[\w-]+$/,
+  maxSignedTokenLength: 2048,
 } as const;

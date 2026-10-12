@@ -9,6 +9,7 @@ export type QrContent =
     }
   | { readonly kind: 'code'; readonly code: string; readonly raw: string }
   | { readonly kind: 'visitorPass'; readonly passCode: string; readonly raw: string }
+  | { readonly kind: 'vehicleToken'; readonly token: string; readonly raw: string }
   | { readonly kind: 'unknown'; readonly raw: string };
 
 export type QrContentKind = QrContent['kind'];
@@ -17,6 +18,9 @@ const isGeneratedCode = (value: string) => QR_RULES.generatedCodePattern.test(va
 
 export function parseQrContent(decodedText: string | null | undefined): QrContent {
   const raw = (decodedText ?? '').trim();
+  if (raw.length <= QR_RULES.maxSignedTokenLength && QR_RULES.signedTokenPattern.test(raw)) {
+    return { kind: 'vehicleToken', token: raw, raw };
+  }
   if (!raw || raw.length > QR_RULES.maxContentLength) return { kind: 'unknown', raw };
 
   if (raw.toUpperCase().startsWith(QR_RULES.visitorPassPrefix)) {

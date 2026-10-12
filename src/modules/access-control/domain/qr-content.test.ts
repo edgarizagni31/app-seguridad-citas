@@ -96,3 +96,15 @@ describe('parseQrContent · casos adicionales', () => {
     expect(parseQrContent('appsch123').kind).toBe('unknown');
   });
 });
+
+describe('parseQrContent · QR firmado del vehículo', () => {
+  it('reconoce un JWT compacto aunque supere el largo de los QR clásicos', () => {
+    const token = `eyJhbGciOiJFUzI1NiJ9.${'a'.repeat(700)}.c2lnbmF0dXJl`;
+
+    expect(parseQrContent(token)).toEqual({ kind: 'vehicleToken', token, raw: token });
+  });
+
+  it('un texto con puntos que no es base64url no es un token', () => {
+    expect(parseQrContent('a.b c.d').kind).toBe('unknown');
+  });
+});

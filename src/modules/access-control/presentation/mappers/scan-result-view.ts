@@ -58,6 +58,14 @@ function describeContent(content: QrContent): Omit<ScanResultView, 'readAt' | 'r
         fields: [{ label: TEXT.passCode, value: content.passCode, display: 'code' }],
         note: TEXT.notes.visitorPass,
       };
+    case 'vehicleToken':
+      return {
+        tone: 'info',
+        icon: 'truck-check-outline',
+        title: TEXT.types.vehicleToken,
+        fields: [],
+        note: TEXT.notes.vehicleToken,
+      };
     case 'unknown':
       return {
         tone: 'error',

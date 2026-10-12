@@ -19,6 +19,18 @@ export const DEMO_USERS: Readonly<Record<string, DemoUser>> = {
     familyName: 'Méndez',
     groups: ['PACCESO_ASEGURIDAD'],
   },
+  'hse@demo.ransa': {
+    sub: 'demo-hse',
+    name: 'Ana',
+    familyName: 'Morales',
+    groups: ['PACCESO_AHSE'],
+  },
+  'jefe@demo.ransa': {
+    sub: 'demo-jefe',
+    name: 'Jorge',
+    familyName: 'Castro',
+    groups: ['PACCESO_JSEGURIDAD', 'PACCESO_JHSE'],
+  },
   'cliente@demo.ransa': {
     sub: 'demo-cliente',
     name: 'Lucía',

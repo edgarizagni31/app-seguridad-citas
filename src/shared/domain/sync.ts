@@ -39,3 +39,11 @@ export type SyncSnapshot = {
   readonly failed: number;
   readonly attention: number;
 };
+
+export interface SyncService {
+  requestSync(): Promise<void>;
+  retryFailed(): Promise<void>;
+  snapshot(): Promise<SyncSnapshot>;
+  listAttention(): Promise<AttentionItem[]>;
+  dismissAttention(id: string): Promise<void>;
+}

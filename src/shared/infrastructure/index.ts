@@ -9,3 +9,4 @@ export {
 export type { HttpError } from './http/http-error';
 export { consoleSink, createLogger, type LogEntry, type LogSink } from './logger';
 export { systemClock } from './system-clock';
+export { isStateOnline, netInfoConnectivity } from './network/netinfo-connectivity';

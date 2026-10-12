@@ -23,3 +23,5 @@ export type {
   SendOutcome,
   SyncSnapshot,
 } from './sync';
+export type { Connectivity } from './connectivity';
+export type { SyncService } from './sync';

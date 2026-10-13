@@ -1,24 +1,23 @@
 import { StyleSheet, View } from 'react-native';
 
-import { STRINGS } from '@/shared/lib';
 import { AppText, colors, Icon, radius, spacing } from '@/shared/ui';
 
 type StepPromptProps = {
   title?: string;
   prompt: string;
-  // Paso que aparece por una respuesta Sí anterior
-  conditional?: boolean;
+  // Insignia de la trama, ej. "Porque respondiste Sí"
+  badge?: string;
 };
 
 // Texto del paso con la barra verde a la izquierda, como en el mockup
-export function StepPrompt({ title, prompt, conditional }: StepPromptProps) {
+export function StepPrompt({ title, prompt, badge }: StepPromptProps) {
   return (
     <View style={styles.container}>
-      {conditional && (
+      {badge && (
         <View style={styles.because}>
           <Icon name="check-circle" size={18} color={colors.success} />
           <AppText variant="caption" color={colors.success}>
-            {STRINGS.inspection.because}
+            {badge}
           </AppText>
         </View>
       )}

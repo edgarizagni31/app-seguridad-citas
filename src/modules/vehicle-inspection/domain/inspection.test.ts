@@ -10,6 +10,7 @@ import {
   setObservation,
   startInspection,
   submitInspection,
+  toSubmitRequest,
   type Inspection,
 } from './inspection';
 import { STANDARD_DEFINITION_V1 as V1 } from './standard-definition';
@@ -153,5 +154,50 @@ describe('Inspection', () => {
     if (observed.ok) {
       expect(setObservation(observed.value, 'x')).toEqual(err({ type: 'not-editable' }));
     }
+  });
+});
+
+describe('toSubmitRequest (respuestas con el formato de la trama)', () => {
+  it('envía las 15 preguntas con su GUID, estado y valor', () => {
+    const complete = completeWith(no);
+    const submitted = submitInspection(complete, V1, LATER);
+    if (!submitted.ok) throw new Error('no se pudo enviar');
+
+    const request = toSubmitRequest(submitted.value, V1);
+
+    expect(request.answers).toHaveLength(15);
+    expect(request.answers[0]).toMatchObject({
+      questionId: V1.steps[0]?.questionId,
+      code: 'front-plate',
+      status: 'ANSWERED',
+      value: { plateMatches: true },
+    });
+    expect(request.answers.find((answer) => answer.code === 'has-trailer')).toMatchObject({
+      status: 'ANSWERED',
+      value: false,
+      answeredAt: LATER.toISOString(),
+    });
+    expect(request.answers.find((answer) => answer.code === 'trailer-photo')).toEqual({
+      questionId: V1.steps[3]?.questionId,
+      code: 'trailer-photo',
+      status: 'SKIPPED',
+      value: null,
+      answeredAt: null,
+    });
+    expect(request.result).toBe('COMPLETED');
+  });
+
+  it('la placa que no coincide viaja como respuesta de la pregunta 1', () => {
+    const observed = reportPlateMismatch(start(), LATER);
+    if (!observed.ok) throw new Error('no se pudo observar');
+
+    const request = toSubmitRequest(observed.value, V1);
+
+    expect(request.result).toBe('OBSERVED');
+    expect(request.answers[0]).toMatchObject({
+      status: 'ANSWERED',
+      value: { plateMatches: false },
+    });
+    expect(request.answers[1]).toMatchObject({ status: 'PENDING', value: null });
   });
 });

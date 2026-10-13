@@ -58,7 +58,7 @@ describe('InspectionWizardScreen', () => {
     await setup();
 
     expect(
-      await screen.findByRole('heading', { name: 'Placa del vehículo · parte delantera' }),
+      await screen.findByRole('heading', { name: 'Placa del vehículo - Parte delantera' }),
     ).toBeOnTheScreen();
     expect(screen.getByText('Paso 1 de 15')).toBeOnTheScreen();
     expect(screen.getAllByText('MNP-456').length).toBeGreaterThan(0);
@@ -98,7 +98,7 @@ describe('InspectionWizardScreen', () => {
     await advance();
 
     expect(
-      await screen.findByRole('heading', { name: '¿El vehículo cuenta con acoplado?' }),
+      await screen.findByRole('heading', { name: '¿Vehículo cuenta con acoplado?' }),
     ).toBeOnTheScreen();
     await user.press(screen.getByRole('radio', { name: 'No' }));
 

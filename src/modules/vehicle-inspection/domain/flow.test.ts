@@ -1,9 +1,10 @@
 import type { Answer, Answers, PhotoRef } from './answers';
-import type { InspectionDefinition } from './definition';
+import type { InspectionDefinition, StepCondition, StepDefinition } from './definition';
 import { err } from '@/shared/domain';
 
 import {
   currentStep,
+  evaluateCondition,
   invalidatedBy,
   isComplete,
   nextStep,
@@ -32,6 +33,24 @@ const QUESTIONS = [
   'has-waybill',
 ];
 const ids = (steps: { id: string }[]) => steps.map((step) => step.id);
+const is = (stepId: string, value: unknown): StepCondition => ({
+  stepId,
+  operator: 'EQUALS',
+  value,
+});
+const step = (
+  id: string,
+  kind: StepDefinition['kind'],
+  extra: Partial<StepDefinition> = {},
+): StepDefinition => ({
+  id,
+  questionId: `guid-${id}`,
+  kind,
+  title: '',
+  prompt: '',
+  required: true,
+  ...extra,
+});
 
 function answerAll(value: Answer): Answers {
   const answers: Record<string, Answer> = {};
@@ -149,16 +168,10 @@ describe('saltos condicionales (goTo)', () => {
   const definition: InspectionDefinition = {
     version: 'test',
     steps: [
-      {
-        id: 'q1',
-        kind: 'yes_no',
-        title: '',
-        prompt: '',
-        jumps: [{ when: { stepId: 'q1', equals: false }, goTo: 'end' }],
-      },
-      { id: 'p1', kind: 'photo', title: '', prompt: '' },
-      { id: 'q2', kind: 'yes_no', title: '', prompt: '' },
-      { id: 'end', kind: 'photo', title: '', prompt: '' },
+      step('q1', 'yes_no', { jumps: [{ when: is('q1', false), goTo: 'end' }] }),
+      step('p1', 'photo'),
+      step('q2', 'yes_no'),
+      step('end', 'photo'),
     ],
   };
 
@@ -177,14 +190,8 @@ describe('saltos condicionales (goTo)', () => {
     const looping: InspectionDefinition = {
       version: 'bad',
       steps: [
-        { id: 'a', kind: 'yes_no', title: '', prompt: '' },
-        {
-          id: 'b',
-          kind: 'yes_no',
-          title: '',
-          prompt: '',
-          jumps: [{ when: { stepId: 'a', equals: true }, goTo: 'a' }],
-        },
+        step('a', 'yes_no'),
+        step('b', 'yes_no', { jumps: [{ when: is('a', true), goTo: 'a' }] }),
       ],
     };
 
@@ -192,26 +199,71 @@ describe('saltos condicionales (goTo)', () => {
   });
 });
 
+describe('evaluateCondition (operadores de la trama)', () => {
+  const answers: Answers = { a: yes, b: no, plate: { kind: 'plate', confirmed: true } };
+
+  it('EQUALS / NOT_EQUALS / IN / NOT_IN comparan el valor de la respuesta', () => {
+    expect(evaluateCondition(answers, is('a', true))).toBe(true);
+    expect(evaluateCondition(answers, { stepId: 'b', operator: 'NOT_EQUALS', value: true })).toBe(
+      true,
+    );
+    expect(evaluateCondition(answers, { stepId: 'a', operator: 'IN', value: [false, true] })).toBe(
+      true,
+    );
+    expect(evaluateCondition(answers, { stepId: 'a', operator: 'NOT_IN', value: [true] })).toBe(
+      false,
+    );
+    expect(evaluateCondition(answers, is('plate', { plateMatches: true }))).toBe(true);
+  });
+
+  it('ANSWERED / NOT_ANSWERED miran si hay respuesta', () => {
+    expect(evaluateCondition(answers, { stepId: 'a', operator: 'ANSWERED' })).toBe(true);
+    expect(evaluateCondition(answers, { stepId: 'z', operator: 'NOT_ANSWERED' })).toBe(true);
+  });
+
+  it('sin respuesta todavía, el resultado es desconocido', () => {
+    expect(evaluateCondition(answers, is('z', true))).toBeUndefined();
+  });
+
+  it('all es Y, any es O, y un desconocido solo decide si hace falta', () => {
+    expect(evaluateCondition(answers, { all: [is('a', true), is('b', false)] })).toBe(true);
+    expect(evaluateCondition(answers, { all: [is('a', true), is('b', true)] })).toBe(false);
+    expect(evaluateCondition(answers, { all: [is('a', true), is('z', true)] })).toBeUndefined();
+    expect(evaluateCondition(answers, { any: [is('b', true), is('a', true)] })).toBe(true);
+    expect(evaluateCondition(answers, { any: [is('b', true), is('z', true)] })).toBeUndefined();
+    expect(evaluateCondition(answers, { any: [is('a', false), is('b', true)] })).toBe(false);
+  });
+
+  it('una pregunta con condición compuesta se muestra según la trama', () => {
+    const definition: InspectionDefinition = {
+      version: 'test',
+      steps: [
+        step('a', 'yes_no'),
+        step('b', 'yes_no'),
+        step('c', 'photo', { showIf: { all: [is('a', true), is('b', true)] } }),
+      ],
+    };
+
+    expect(ids(visibleSteps(definition, { a: yes, b: no }))).toEqual(['a', 'b']);
+    expect(ids(visibleSteps(definition, { a: yes, b: yes }))).toEqual(['a', 'b', 'c']);
+  });
+});
+
 describe('validateDefinition', () => {
-  it('detecta ids duplicados, referencias rotas, condiciones sobre no-preguntas y ciclos', () => {
+  it('detecta ids duplicados, referencias rotas y ciclos, también dentro de all/any', () => {
     const invalid: InspectionDefinition = {
       version: 'bad',
       steps: [
-        { id: 'p', kind: 'photo', title: '', prompt: '' },
-        { id: 'p', kind: 'photo', title: '', prompt: '' },
-        { id: 'x', kind: 'photo', title: '', prompt: '', showIf: { stepId: 'nope', equals: true } },
-        { id: 'y', kind: 'photo', title: '', prompt: '', showIf: { stepId: 'p', equals: true } },
-        { id: 'z', kind: 'photo', title: '', prompt: '', showIf: { stepId: 'q', equals: true } },
-        {
-          id: 'q',
-          kind: 'yes_no',
-          title: '',
-          prompt: '',
+        step('p', 'photo'),
+        step('p', 'photo'),
+        step('x', 'photo', { showIf: is('nope', true) }),
+        step('z', 'photo', { showIf: { any: [is('p', true), is('q', true)] } }),
+        step('q', 'yes_no', {
           jumps: [
-            { when: { stepId: 'q', equals: true }, goTo: 'p' },
-            { when: { stepId: 'q', equals: false }, goTo: 'missing' },
+            { when: is('q', true), goTo: 'p' },
+            { when: is('q', false), goTo: 'missing' },
           ],
-        },
+        }),
       ],
     };
 
@@ -219,7 +271,6 @@ describe('validateDefinition', () => {
       err([
         { type: 'duplicate-step', stepId: 'p' },
         { type: 'unknown-step', stepId: 'x', reference: 'nope' },
-        { type: 'not-a-question', stepId: 'y', reference: 'p' },
         { type: 'backward-reference', stepId: 'z', reference: 'q' },
         { type: 'backward-reference', stepId: 'q', reference: 'p' },
         { type: 'unknown-step', stepId: 'q', reference: 'missing' },

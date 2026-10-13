@@ -1,7 +1,7 @@
 import type { Answer, Answers, PhotoRef } from './answers';
 import type { InspectionDefinition } from './definition';
 import { currentStep, isComplete, pruneAnswers, visibleSteps } from './flow';
-import type { SubmitInspectionRequest } from './ports';
+import type { SubmitInspectionRequest, TramaAnswer } from './ports';
 import { err, ok, type Result } from '@/shared/domain';
 
 export const OBSERVATION_MAX_LENGTH = 500;
@@ -84,11 +84,15 @@ export function answerStep(
   }
 
   const previous = inspection.answers[stepId];
+  const stamped: Answer = { ...answer, answeredAt: now.toISOString() };
   const { answers, removed } = pruneAnswers(definition, {
     ...inspection.answers,
-    [stepId]: answer,
+    [stepId]: stamped,
   });
-  const replaced = previous?.kind === 'photo' && previous !== answer ? [previous.photo] : [];
+  const replaced =
+    previous?.kind === 'photo' && answer.kind === 'photo' && previous.photo.id !== answer.photo.id
+      ? [previous.photo]
+      : [];
   const discardedPhotos = [
     ...replaced,
     ...removed.flatMap(({ answer: lost }) => (lost.kind === 'photo' ? [lost.photo] : [])),
@@ -138,8 +142,55 @@ export const photosOf = (inspection: Pick<Inspection, 'answers'>): PhotoRef[] =>
 export const readyToSubmit = (inspection: Inspection, definition: InspectionDefinition) =>
   inspection.state === 'draft' && isComplete(definition, inspection.answers);
 
-export function toSubmitRequest(inspection: Inspection): SubmitInspectionRequest {
-  const entries = Object.entries(inspection.answers);
+function toTramaValue(answer: Answer): TramaAnswer['value'] {
+  if (answer.kind === 'yes_no') return answer.value;
+  if (answer.kind === 'plate') return { plateMatches: answer.confirmed };
+  const { photo } = answer;
+  return {
+    photo: {
+      hash: photo.hash,
+      takenAt: photo.takenAt,
+      width: photo.width,
+      height: photo.height,
+      sizeKb: Math.round(photo.bytes / 1024),
+    },
+  };
+}
+
+// Todas las preguntas de la versión viajan siempre, cada una con su estado (trama)
+export function toSubmitRequest(
+  inspection: Inspection,
+  definition: InspectionDefinition,
+): SubmitInspectionRequest {
+  const visible = new Set(visibleSteps(definition, inspection.answers).map((step) => step.id));
+  const observed = inspection.state === 'observed';
+  const answers = definition.steps.map((step): TramaAnswer => {
+    const answer = inspection.answers[step.id];
+    const base = { questionId: step.questionId, code: step.id };
+    if (answer) {
+      return {
+        ...base,
+        status: 'ANSWERED',
+        value: toTramaValue(answer),
+        answeredAt: answer.answeredAt ?? null,
+      };
+    }
+    // La placa que no coincide se registra como respuesta de la pregunta 1
+    if (observed && step.kind === 'plate') {
+      return {
+        ...base,
+        status: 'ANSWERED',
+        value: { plateMatches: false },
+        answeredAt: inspection.finishedAt,
+      };
+    }
+    return {
+      ...base,
+      status: visible.has(step.id) ? 'PENDING' : 'SKIPPED',
+      value: null,
+      answeredAt: null,
+    };
+  });
   return {
     inspectionId: inspection.id,
     definitionVersion: inspection.definitionVersion,
@@ -149,15 +200,10 @@ export function toSubmitRequest(inspection: Inspection): SubmitInspectionRequest
     inspectorId: inspection.inspectorId,
     startedAt: inspection.startedAt,
     finishedAt: inspection.finishedAt ?? inspection.updatedAt,
-    result: inspection.state === 'observed' ? 'OBSERVED' : 'COMPLETED',
+    result: observed ? 'OBSERVED' : 'COMPLETED',
     observation: inspection.observation.trim(),
-    answers: entries.map(([stepId, answer]) => ({
-      stepId,
-      type: answer.kind === 'plate' ? 'PLATE' : answer.kind === 'yes_no' ? 'YES_NO' : 'PHOTO',
-      value: answer.kind === 'yes_no' ? answer.value : answer.kind === 'plate' ? true : null,
-      photoHash: answer.kind === 'photo' ? answer.photo.hash : null,
-    })),
-    photos: entries.flatMap(([stepId, answer]) =>
+    answers,
+    photos: Object.entries(inspection.answers).flatMap(([stepId, answer]) =>
       answer.kind === 'photo' ? [{ stepId, photo: answer.photo }] : [],
     ),
   };

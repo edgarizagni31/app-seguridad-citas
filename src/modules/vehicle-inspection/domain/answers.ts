@@ -9,9 +9,11 @@ export type PhotoRef = {
   readonly hash: string;
 };
 
-export type Answer =
+// answeredAt lo pone el agregado al guardar la respuesta
+export type Answer = (
   | { readonly kind: 'plate'; readonly confirmed: true }
   | { readonly kind: 'yes_no'; readonly value: boolean }
-  | { readonly kind: 'photo'; readonly photo: PhotoRef };
+  | { readonly kind: 'photo'; readonly photo: PhotoRef }
+) & { readonly answeredAt?: string };
 
 export type Answers = Readonly<Record<string, Answer>>;

@@ -1,5 +1,6 @@
 export type { Answer, Answers, PhotoRef } from './answers';
 export type {
+  ConditionOperator,
   InspectionDefinition,
   JumpRule,
   StepCondition,
@@ -8,6 +9,7 @@ export type {
 } from './definition';
 export {
   currentStep,
+  evaluateCondition,
   invalidatedBy,
   isComplete,
   nextStep,
@@ -48,6 +50,7 @@ export {
   type PhotoStore,
   type StoredInspection,
   type SubmitInspectionRequest,
+  type TramaAnswer,
 } from './ports';
 export {
   buildBoard,
@@ -56,3 +59,10 @@ export {
   type BoardVehicle,
   type InspectionBoard,
 } from './board';
+export {
+  definitionFromQuestions,
+  type Question,
+  type QuestionCondition,
+  type QuestionKind,
+  type QuestionnaireError,
+} from './questionnaire';

@@ -203,13 +203,10 @@ export const STRINGS = {
     close: 'Salir de la inspección',
     stepOf: (position: number, total: number) => `Paso ${position} de ${total}`,
     voucher: 'Voucher',
-    because: 'Porque respondiste Sí',
     selectOne: 'Selecciona una opción.',
     yes: 'Sí',
     no: 'No',
-    omitted: (label: string) => `Se omitirá la fotografía ${label}.`,
     continue: 'Continuar',
-    plateHint: 'Si la placa no coincide, informa al supervisor y no continúes con la inspección.',
     plateMismatch: 'La placa no coincide',
     plateMismatchTitle: '¿La placa no coincide?',
     plateMismatchMessage:

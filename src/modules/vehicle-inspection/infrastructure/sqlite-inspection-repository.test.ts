@@ -68,7 +68,7 @@ describe('createSqliteInspectionRepository', () => {
     const { db, repo } = await setup();
     const finished = { ...draft(), state: 'observed' as const };
 
-    await repo.saveFinished(finished, toSubmitRequest(finished));
+    await repo.saveFinished(finished, toSubmitRequest(finished, STANDARD_DEFINITION_V1));
 
     expect(await repo.findById('insp-1')).toMatchObject({
       state: 'observed',
@@ -81,8 +81,14 @@ describe('createSqliteInspectionRepository', () => {
 
   it('registra el avance de subida, el resultado y limpia lo sincronizado', async () => {
     const { repo } = await setup();
-    await repo.saveFinished(draft('insp-1', 'veh-1'), toSubmitRequest(draft()));
-    await repo.saveFinished(draft('insp-2', 'veh-2'), toSubmitRequest(draft()));
+    await repo.saveFinished(
+      draft('insp-1', 'veh-1'),
+      toSubmitRequest(draft(), STANDARD_DEFINITION_V1),
+    );
+    await repo.saveFinished(
+      draft('insp-2', 'veh-2'),
+      toSubmitRequest(draft(), STANDARD_DEFINITION_V1),
+    );
 
     await repo.setUploadedPhotos('insp-1', 4);
     await repo.markSynced('insp-1');

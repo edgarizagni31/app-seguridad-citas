@@ -1,0 +1,575 @@
+{
+  "questions": [
+    {
+      "questionId": "6ec88be9-e59b-40e4-a0f2-0940011045df",
+      "code": "front-plate",
+      "number": 1,
+      "kind": "CONFIRM_PLATE",
+      "screen": {
+        "title": "Placa del vehículo - Parte delantera",
+        "instruction": "Verifica que la placa coincida con el vehículo que se encuentra en la garita.",
+        "plate": "ABC-123",
+        "notice": "Si la placa no coincide, informa al supervisor y no continúes con la inspección."
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PLATE_MATCH",
+          "expectedFrom": "screen.plate",
+          "onMismatch": "CLOSE_AS_OBSERVED",
+          "message": "La inspección se registrará como observada y deberás informar al supervisor."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "6a80bcf8-b12c-48b5-a58b-d7262a630f69",
+      "code": "front-photo",
+      "number": 2,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía del vehículo y placa de identificación (delantera)",
+        "instruction": "Toma una fotografía del vehículo y su placa de identificación (delantera).",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/front-photo.jpg"
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "533ca46c-4e9a-4209-a2d7-33fe2a90f130",
+      "code": "has-trailer",
+      "number": 3,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿Vehículo cuenta con acoplado?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-trailer.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "dc070559-c5c4-4bc8-a475-55b8110112c5",
+      "code": "trailer-photo",
+      "number": 4,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía de acoplado y placa de identificación",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía del acoplado y su placa de identificación.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/trailer-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía del acoplado."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿Vehículo cuenta con acoplado?»",
+          "when": {
+            "questionId": "533ca46c-4e9a-4209-a2d7-33fe2a90f130",
+            "questionCode": "has-trailer",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía del acoplado."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "b422eb94-81c6-40aa-ab26-47328abbb814",
+      "code": "has-rear-left-seal",
+      "number": 5,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿El vehículo cuenta con precinto trasero izquierdo?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-rear-left-seal.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "c82c5473-0de1-4637-ad23-3e1add5b5ac0",
+      "code": "rear-left-seal-photo",
+      "number": 6,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía del precinto trasero izquierdo",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía del precinto trasero izquierdo.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/rear-left-seal-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía del precinto trasero izquierdo."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿El vehículo cuenta con precinto trasero izquierdo?»",
+          "when": {
+            "questionId": "b422eb94-81c6-40aa-ab26-47328abbb814",
+            "questionCode": "has-rear-left-seal",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía del precinto trasero izquierdo."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "0eed1131-6765-476d-add7-4c37cdf8fd88",
+      "code": "has-rear-right-seal",
+      "number": 7,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿El vehículo cuenta con precinto trasero derecho?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-rear-right-seal.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "8df01b5e-5182-4177-a87c-0edc27b8f417",
+      "code": "rear-right-seal-photo",
+      "number": 8,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía del precinto trasero derecho",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía del precinto trasero derecho.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/rear-right-seal-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía del precinto trasero derecho."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿El vehículo cuenta con precinto trasero derecho?»",
+          "when": {
+            "questionId": "0eed1131-6765-476d-add7-4c37cdf8fd88",
+            "questionCode": "has-rear-right-seal",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía del precinto trasero derecho."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "85527157-8a8b-4160-a91f-10ca27109ef4",
+      "code": "has-side-door",
+      "number": 9,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿Vehículo cuenta con puerta lateral?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-side-door.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "7165405c-b74d-4273-a20a-9539a18fda98",
+      "code": "side-door-photo",
+      "number": 10,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía lateral del vehículo y del mecanismo de cierre",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía lateral del vehículo y del mecanismo de cierre.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/side-door-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía lateral y del mecanismo de cierre."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿Vehículo cuenta con puerta lateral?»",
+          "when": {
+            "questionId": "85527157-8a8b-4160-a91f-10ca27109ef4",
+            "questionCode": "has-side-door",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía lateral y del mecanismo de cierre."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "6bee3391-8450-4ad3-a89a-800c42178569",
+      "code": "has-side-seal",
+      "number": 11,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿Vehículo cuenta con precinto lateral?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-side-seal.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "35ec8cfe-1d51-4428-a989-4e56c8663a75",
+      "code": "side-seal-photo",
+      "number": 12,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía del precinto lateral",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía del precinto lateral.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/side-seal-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía del precinto lateral."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿Vehículo cuenta con precinto lateral?»",
+          "when": {
+            "questionId": "6bee3391-8450-4ad3-a89a-800c42178569",
+            "questionCode": "has-side-seal",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía del precinto lateral."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "1ce806d3-bf20-48d6-ab63-33ffdb3ff20a",
+      "code": "cabin-photo",
+      "number": 13,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía de la inspección interna de la cabina del vehículo",
+        "instruction": "Toma una fotografía de la inspección interna de la cabina del vehículo.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/cabin-photo.jpg"
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "96e4bce9-933f-4d36-a920-1e7c25e4493b",
+      "code": "has-waybill",
+      "number": 14,
+      "kind": "YES_NO",
+      "screen": {
+        "title": "¿El transportista cuenta con guía?",
+        "instruction": "Selecciona una opción.",
+        "image": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/has-waybill.jpg",
+        "options": [
+          {
+            "value": true,
+            "label": "Sí"
+          },
+          {
+            "value": false,
+            "label": "No"
+          }
+        ]
+      },
+      "validations": [
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        }
+      ],
+      "behavior": {
+        "autoAdvanceMs": 400
+      },
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    },
+    {
+      "questionId": "4d674b4b-189f-4c3d-a757-c4f52509c6dd",
+      "code": "waybill-photo",
+      "number": 15,
+      "kind": "PHOTO",
+      "screen": {
+        "title": "Fotografía de la guía",
+        "badge": "Porque respondiste Sí",
+        "instruction": "Toma una fotografía de la guía.",
+        "referenceImage": "https://storage.ransa.example/portal-citas/cuestionarios/inspeccion-vehicular/v1/waybill-photo.jpg",
+        "skippedMessage": "Se omitirá la fotografía de la guía."
+      },
+      "validations": [
+        {
+          "type": "SHOW_IF",
+          "description": "Solo se pide si respondió Sí a «¿El transportista cuenta con guía?»",
+          "when": {
+            "questionId": "96e4bce9-933f-4d36-a920-1e7c25e4493b",
+            "questionCode": "has-waybill",
+            "operator": "EQUALS",
+            "value": true
+          },
+          "otherwise": "SKIP",
+          "message": "Se omitirá la fotografía de la guía."
+        },
+        {
+          "type": "REQUIRED",
+          "message": "Responde esta pregunta para continuar."
+        },
+        {
+          "type": "PHOTO",
+          "minPhotos": 1,
+          "maxPhotos": 1,
+          "maxSidePx": 1600,
+          "maxSizeKb": 500,
+          "source": "CAMERA",
+          "message": "Toma la foto con la cámara."
+        }
+      ],
+      "answer": {
+        "status": "PENDING",
+        "value": null,
+        "answeredAt": null
+      }
+    }
+  ]
+}

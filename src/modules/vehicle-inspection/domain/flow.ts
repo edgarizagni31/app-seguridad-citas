@@ -5,8 +5,14 @@ import { err, ok, type Result } from '@/shared/domain';
 export type DefinitionError =
   | { readonly type: 'duplicate-step'; readonly stepId: string }
   | { readonly type: 'unknown-step'; readonly stepId: string; readonly reference: string }
-  | { readonly type: 'not-a-question'; readonly stepId: string; readonly reference: string }
   | { readonly type: 'backward-reference'; readonly stepId: string; readonly reference: string };
+
+const referencedSteps = (condition: StepCondition): string[] =>
+  'all' in condition
+    ? condition.all.flatMap(referencedSteps)
+    : 'any' in condition
+      ? condition.any.flatMap(referencedSteps)
+      : [condition.stepId];
 
 // Solo se permiten referencias hacia atrás en condiciones y hacia adelante en saltos: sin ciclos
 export function validateDefinition(
@@ -20,14 +26,13 @@ export function validateDefinition(
   });
 
   const checkCondition = (step: StepDefinition, position: number, condition: StepCondition) => {
-    const target = index.get(condition.stepId);
-    const referenced = target === undefined ? undefined : definition.steps[target];
-    if (target === undefined || !referenced) {
-      errors.push({ type: 'unknown-step', stepId: step.id, reference: condition.stepId });
-    } else if (referenced.kind !== 'yes_no') {
-      errors.push({ type: 'not-a-question', stepId: step.id, reference: condition.stepId });
-    } else if (target >= position) {
-      errors.push({ type: 'backward-reference', stepId: step.id, reference: condition.stepId });
+    for (const reference of referencedSteps(condition)) {
+      const target = index.get(reference);
+      if (target === undefined) {
+        errors.push({ type: 'unknown-step', stepId: step.id, reference });
+      } else if (target >= position) {
+        errors.push({ type: 'backward-reference', stepId: step.id, reference });
+      }
     }
   };
 
@@ -46,19 +51,52 @@ export function validateDefinition(
   return errors.length > 0 ? err(errors) : ok(definition);
 }
 
-const yesNo = (answers: Answers, stepId: string) => {
-  const answer = answers[stepId];
-  return answer?.kind === 'yes_no' ? answer.value : undefined;
+// Valor comparable de una respuesta, con el mismo formato que la trama
+const valueOf = (answer: Answer | undefined): unknown => {
+  if (!answer) return undefined;
+  if (answer.kind === 'yes_no') return answer.value;
+  if (answer.kind === 'plate') return { plateMatches: answer.confirmed };
+  return { photo: answer.photo.hash };
 };
+
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+// true, false o undefined (todavía no se sabe porque falta una respuesta)
+export function evaluateCondition(answers: Answers, condition: StepCondition): boolean | undefined {
+  if ('all' in condition) {
+    const results = condition.all.map((item) => evaluateCondition(answers, item));
+    if (results.includes(false)) return false;
+    return results.every((result) => result === true) ? true : undefined;
+  }
+  if ('any' in condition) {
+    const results = condition.any.map((item) => evaluateCondition(answers, item));
+    if (results.includes(true)) return true;
+    return results.every((result) => result === false) ? false : undefined;
+  }
+  const answer = answers[condition.stepId];
+  if (condition.operator === 'ANSWERED') return answer !== undefined;
+  if (condition.operator === 'NOT_ANSWERED') return answer === undefined;
+  const value = valueOf(answer);
+  if (value === undefined) return undefined;
+  const list = Array.isArray(condition.value) ? condition.value : [];
+  switch (condition.operator) {
+    case 'EQUALS':
+      return sameValue(value, condition.value);
+    case 'NOT_EQUALS':
+      return !sameValue(value, condition.value);
+    case 'IN':
+      return list.some((item) => sameValue(value, item));
+    case 'NOT_IN':
+      return !list.some((item) => sameValue(value, item));
+  }
+}
 
 // Sin respuesta todavía, el paso condicionado se cuenta como posible
-const conditionHolds = (answers: Answers, condition: StepCondition) => {
-  const value = yesNo(answers, condition.stepId);
-  return value === undefined || value === condition.equals;
-};
+const conditionHolds = (answers: Answers, condition: StepCondition) =>
+  evaluateCondition(answers, condition) !== false;
 
 const conditionMet = (answers: Answers, condition: StepCondition) =>
-  yesNo(answers, condition.stepId) === condition.equals;
+  evaluateCondition(answers, condition) === true;
 
 export function visibleSteps(definition: InspectionDefinition, answers: Answers): StepDefinition[] {
   const visible: StepDefinition[] = [];

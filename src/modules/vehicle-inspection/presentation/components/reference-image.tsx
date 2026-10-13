@@ -9,13 +9,20 @@ const { inspection: TEXT } = STRINGS;
 
 type ReferenceImageProps = {
   stepId: string;
+  // URL de la trama; se usa si la app no tiene la imagen local de ese paso
+  remoteUri?: string;
   // Foto real ya tomada: reemplaza a la referencial (RF-G5)
   photoUri?: string | null;
   tagged?: boolean;
 };
 
-export function ReferenceImage({ stepId, photoUri, tagged = true }: ReferenceImageProps) {
-  const reference = REFERENCE_IMAGES[stepId];
+export function ReferenceImage({
+  stepId,
+  remoteUri,
+  photoUri,
+  tagged = true,
+}: ReferenceImageProps) {
+  const reference = REFERENCE_IMAGES[stepId] ?? (remoteUri ? { uri: remoteUri } : undefined);
   if (photoUri) {
     return (
       <View style={styles.frame}>

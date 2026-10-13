@@ -35,12 +35,18 @@ const confirm = (title: string, message: string, action: string) =>
     ]);
   });
 
-const omittedLabelFor = (step: StepDefinition, value: boolean) =>
-  value
-    ? null
-    : (DEFINITION.steps.find(
-        (candidate) => candidate.showIf?.stepId === step.id && candidate.showIf.equals,
-      )?.omittedLabel ?? null);
+// Aviso de la trama ("Se omitirá la fotografía de…") del paso que deja de aplicar con esta respuesta
+const skippedMessageFor = (answers: Answers, step: StepDefinition, answer: Answer) => {
+  const before = new Set(visibleSteps(DEFINITION, answers).map((item) => item.id));
+  const after = new Set(
+    visibleSteps(DEFINITION, { ...answers, [step.id]: answer }).map((item) => item.id),
+  );
+  return (
+    DEFINITION.steps.find(
+      (item) => before.has(item.id) && !after.has(item.id) && item.skippedMessage,
+    )?.skippedMessage ?? null
+  );
+};
 
 export function useInspectionWizard() {
   const router = useRouter();
@@ -114,14 +120,14 @@ export function useInspectionWizard() {
     if (!updated) return;
     void Haptics.selectionAsync().catch(() => undefined);
     // RF-G1c: avance automático, con el aviso de la foto omitida si respondió No
-    const omitted = omittedLabelFor(step, value);
+    const omitted = skippedMessageFor(answers, step, answer);
     setAdvancing({ value, omitted });
     timer.current = setTimeout(
       () => {
         setAdvancing(null);
         goAfter(step.id, updated);
       },
-      omitted ? ADVANCE_WITH_NOTICE_MS : ADVANCE_MS,
+      omitted ? ADVANCE_WITH_NOTICE_MS : (step.autoAdvanceMs ?? ADVANCE_MS),
     );
   };
 

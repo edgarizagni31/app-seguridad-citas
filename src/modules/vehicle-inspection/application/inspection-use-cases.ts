@@ -191,7 +191,7 @@ async function close(
   if (!finished.ok) return finished;
   const saved = await guard(
     deps,
-    () => deps.repo.saveFinished(finished.value, toSubmitRequest(finished.value)),
+    () => deps.repo.saveFinished(finished.value, toSubmitRequest(finished.value, deps.definition)),
     'No se pudo cerrar la inspección',
   );
   if (!saved.ok) return saved;

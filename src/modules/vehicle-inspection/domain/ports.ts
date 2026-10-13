@@ -24,6 +24,26 @@ export interface PhotoStore {
   discardCapture(capture: CapturedPhoto): Promise<void>;
 }
 
+export type TramaAnswer = {
+  readonly questionId: string;
+  readonly code: string;
+  readonly status: 'PENDING' | 'ANSWERED' | 'SKIPPED';
+  readonly value:
+    | boolean
+    | { readonly plateMatches: boolean }
+    | {
+        readonly photo: {
+          readonly hash: string;
+          readonly takenAt: string;
+          readonly width: number;
+          readonly height: number;
+          readonly sizeKb: number;
+        };
+      }
+    | null;
+  readonly answeredAt: string | null;
+};
+
 // Cuerpo de VehicleInspection/Submit (docs/CONTRATO-API-INGRESO-INSPECCION.md)
 export type SubmitInspectionRequest = {
   readonly inspectionId: string;
@@ -36,12 +56,8 @@ export type SubmitInspectionRequest = {
   readonly finishedAt: string;
   readonly result: 'COMPLETED' | 'OBSERVED';
   readonly observation: string;
-  readonly answers: readonly {
-    readonly stepId: string;
-    readonly type: 'PLATE' | 'YES_NO' | 'PHOTO';
-    readonly value: boolean | null;
-    readonly photoHash: string | null;
-  }[];
+  // Las respuestas con el formato de la trama (docs/PREGUNTAS-INSPECCION.md)
+  readonly answers: readonly TramaAnswer[];
   // Solo para subir las fotos antes del registro; no viaja en el cuerpo
   readonly photos: readonly { readonly stepId: string; readonly photo: PhotoRef }[];
 };

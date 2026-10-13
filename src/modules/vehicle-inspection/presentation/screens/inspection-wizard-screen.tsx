@@ -86,28 +86,30 @@ function StepView({ vm, step }: { vm: Wizard; step: StepDefinition }) {
                 <AppText variant="plate">{vm.inspection.plate}</AppText>
               </View>
             </View>
-            <Banner tone="info" message={TEXT.plateHint} />
+            {step.notice && <Banner tone="info" message={step.notice} />}
           </>
         )}
         {step.kind === 'yes_no' && (
           <>
             <StepPrompt title={step.title} prompt={step.prompt} />
-            <ReferenceImage stepId={step.id} tagged={false} />
+            <ReferenceImage stepId={step.id} remoteUri={step.image} tagged={false} />
             <YesNoOptions
               label={step.title}
               value={choice}
               disabled={vm.busy || vm.advancing !== null}
               onChoose={vm.choose}
             />
-            {vm.advancing?.omitted && (
-              <Banner tone="warning" message={TEXT.omitted(vm.advancing.omitted)} />
-            )}
+            {vm.advancing?.omitted && <Banner tone="warning" message={vm.advancing.omitted} />}
           </>
         )}
         {step.kind === 'photo' && (
           <>
-            <StepPrompt prompt={step.prompt} conditional={Boolean(step.showIf)} />
-            <ReferenceImage stepId={step.id} photoUri={photo?.uri} />
+            <StepPrompt prompt={step.prompt} badge={step.badge} />
+            <ReferenceImage
+              stepId={step.id}
+              remoteUri={step.referenceImage}
+              photoUri={photo?.uri}
+            />
           </>
         )}
         {vm.error && <Banner tone="error" message={vm.error} />}

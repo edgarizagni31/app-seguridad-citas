@@ -97,7 +97,7 @@ describe('startShift / endShift', () => {
 
     const result = await startShift({ shiftGateway, store, today })(SITE);
 
-    expect(shiftGateway.downloadSnapshot).toHaveBeenCalledWith('site-central', '2026-10-12');
+    expect(shiftGateway.downloadSnapshot).toHaveBeenCalledWith(SITE, '2026-10-12');
     expect(result).toEqual(ok(snapshot()));
     expect(await store.selectedSite()).toEqual(SITE);
   });

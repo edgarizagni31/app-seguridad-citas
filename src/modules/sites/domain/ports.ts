@@ -8,7 +8,7 @@ export interface SitesGateway {
 }
 
 export interface ShiftGateway {
-  downloadSnapshot(siteId: string, date: string): Promise<Result<ShiftSnapshot, SitesError>>;
+  downloadSnapshot(site: Site, date: string): Promise<Result<ShiftSnapshot, SitesError>>;
 }
 
 export interface ShiftStore {

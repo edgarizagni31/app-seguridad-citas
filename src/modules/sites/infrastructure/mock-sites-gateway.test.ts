@@ -1,30 +1,41 @@
 import { DEV_QR_PUBLIC_KEY_HEX } from '@/shared/infrastructure/demo';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
 
-import { createMockSitesGateways } from './mock-sites-gateway';
+import { createMockShiftGateway, createMockSitesGateway } from './mock-sites-gateway';
 
-function setup(online = true) {
-  return createMockSitesGateways({
+const SITE = { id: '29586cdd-b6a7-4d17-b790-e1281173780c', name: 'Ransa San Agustin' };
+
+const options = (online = true) => ({ isOnline: async () => online, latencyMs: 0 });
+const shiftGateway = (online = true) =>
+  createMockShiftGateway({
+    ...options(online),
     clock: createFixedClock('2026-10-12T16:00:00.000Z'),
-    isOnline: async () => online,
-    latencyMs: 0,
   });
-}
 
-describe('createMockSitesGateways', () => {
-  it('lista las sedes de demostración', async () => {
-    const result = await setup().sitesGateway.listMySites();
+describe('createMockSitesGateway', () => {
+  it('lista las sedes del modo demo', async () => {
+    const result = await createMockSitesGateway(options()).listMySites();
 
     expect(result.ok && result.value.map((site) => site.name)).toEqual([
-      'Almacén Central',
-      'Almacén Norte',
+      'Sede demo 1',
+      'Sede demo 2',
     ]);
   });
 
-  it('entrega el paquete del día con las citas de los mockups y la clave del QR', async () => {
-    const result = await setup().shiftGateway.downloadSnapshot('site-central', '2026-10-12');
+  it('sin red falla con network', async () => {
+    expect(await createMockSitesGateway(options(false)).listMySites()).toEqual({
+      ok: false,
+      error: { type: 'network' },
+    });
+  });
+});
+
+describe('createMockShiftGateway', () => {
+  it('arma el paquete del día de ejemplo para cualquier sede, con la clave del QR', async () => {
+    const result = await shiftGateway().downloadSnapshot(SITE, '2026-10-12');
     if (!result.ok) throw new Error('se esperaba el paquete');
 
+    expect(result.value.siteId).toBe(SITE.id);
     expect(result.value.appointments.map((appointment) => appointment.clientName)).toEqual([
       'DELOSI',
       'DOLLAR CITY',
@@ -35,7 +46,7 @@ describe('createMockSitesGateways', () => {
   });
 
   it('sin red falla con network', async () => {
-    expect(await setup(false).shiftGateway.downloadSnapshot('site-central', '2026-10-12')).toEqual({
+    expect(await shiftGateway(false).downloadSnapshot(SITE, '2026-10-12')).toEqual({
       ok: false,
       error: { type: 'network' },
     });

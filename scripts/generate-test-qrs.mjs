@@ -6,6 +6,12 @@ import QRCode from 'qrcode';
 
 const OUTPUT = 'docs/qr-pruebas';
 
+// Sede de los QR del vehículo: el headquarterId elegido en la app (npm run qr:generate -- --site <id>)
+const siteArg = process.argv.indexOf('--site');
+const SITE_ID = siteArg > -1 ? process.argv[siteArg + 1] : 'site-central';
+if (!SITE_ID)
+  throw new Error('Falta el id de la sede: npm run qr:generate -- --site <headquarterId>');
+
 const CASES = [
   {
     file: '01-unidad-placa-con-guion',
@@ -52,7 +58,7 @@ const vehicleQr = (overrides) =>
   signVehicleQr(
     {
       jti: `qr-${overrides.plt}-${overrides.jti ?? 'demo'}`,
-      sid: 'site-central',
+      sid: SITE_ID,
       apt: 'apt-delosi',
       vch: 'voucher-093',
       vcd: 'APPASP0000000000000093',
@@ -64,7 +70,7 @@ const vehicleQr = (overrides) =>
     overrides.key,
   );
 
-// QR firmados del vehículo (sede Almacén Central del modo demo)
+// QR firmados del vehículo para la sede indicada con --site
 CASES.push(
   {
     file: '08-vehiculo-abc-123',
@@ -95,7 +101,7 @@ CASES.push(
   },
   {
     file: '11-vehiculo-otra-sede',
-    content: vehicleQr({ plt: 'ABC-123', sid: 'site-norte' }),
+    content: vehicleQr({ plt: 'ABC-123', sid: 'otra-sede' }),
     expected: 'Rechazo: QR de otra sede',
   },
   {
@@ -134,6 +140,6 @@ for (const { file, content, expected } of CASES) {
 const html = `<!doctype html><html lang="es"><meta charset="utf-8"><title>QR de prueba · Portal Citas</title>
 <style>body{font-family:system-ui;margin:24px;background:#f8fafc}main{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px}
 figure{margin:0;padding:16px;background:#fff;border-radius:16px;box-shadow:0 4px 12px #0f172a14}img{width:100%}figcaption{display:grid;gap:6px}code{word-break:break-all;color:#5b6b80}</style>
-<h1>QR de prueba · Portal Citas</h1><main>${cards.join('')}</main></html>`;
+<h1>QR de prueba · Portal Citas</h1><p>Sede: <code>${SITE_ID}</code></p><main>${cards.join('')}</main></html>`;
 await writeFile(`${OUTPUT}/index.html`, html);
-console.warn(`${CASES.length} QR generados en ${OUTPUT}`);
+console.warn(`${CASES.length} QR generados en ${OUTPUT} (sede ${SITE_ID})`);

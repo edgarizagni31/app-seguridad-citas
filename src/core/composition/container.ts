@@ -18,6 +18,7 @@ import {
   createSqliteEntryRepository,
   es256VehicleQrVerifier,
 } from '@/modules/access-control/infrastructure';
+import { useSessionStore } from '@/modules/auth';
 import { login, logout, refreshSession, restoreSession } from '@/modules/auth/application';
 import {
   createMockAuthGateway,
@@ -33,7 +34,9 @@ import {
   startShift,
 } from '@/modules/sites/application';
 import {
-  createMockSitesGateways,
+  createCitasSitesGateway,
+  createMockShiftGateway,
+  createMockSitesGateway,
   createSqliteShiftStore,
   SITES_MIGRATIONS,
 } from '@/modules/sites/infrastructure';
@@ -114,6 +117,22 @@ export function createContainer(env: Env): AppContainer {
     clock,
   };
 
+  // API de Citas: usa el idToken de la sesión y, ante un 401, renueva una vez y reintenta
+  const citasHttp = createHttpClient({
+    baseUrl: env.apiUrl,
+    appVersion: env.appVersion,
+    platform: Platform.OS,
+    createCorrelationId: Crypto.randomUUID,
+    getAccessToken: async () => useSessionStore.getState().session?.tokens.idToken ?? null,
+    onUnauthorized: async () => {
+      const session = useSessionStore.getState().session;
+      if (!session) return false;
+      const renewed = await refreshSession(authDeps)(session);
+      if (renewed.ok) useSessionStore.getState().setSession(renewed.value);
+      return renewed.ok;
+    },
+  });
+
   // Backend sin estos endpoints todavía: mock hasta implementar el contrato (docs/CONTRATO-API-*)
   const accessGateway = createMockAccessGateway({ isOnline: connectivity.isOnline });
   const entryRepo = createSqliteEntryRepository({
@@ -163,7 +182,12 @@ export function createContainer(env: Env): AppContainer {
 
   const shiftStore = createSqliteShiftStore(db, changes);
   const sitesDeps = {
-    ...createMockSitesGateways({ clock, isOnline: connectivity.isOnline }),
+    sitesGateway:
+      env.authProvider === 'mock'
+        ? createMockSitesGateway({ isOnline: connectivity.isOnline })
+        : createCitasSitesGateway(citasHttp),
+    // El paquete del día sigue simulado hasta que exista el endpoint (docs/CONTRATO-API-*)
+    shiftGateway: createMockShiftGateway({ clock, isOnline: connectivity.isOnline }),
     store: shiftStore,
     today,
   };
@@ -201,6 +225,7 @@ export function createContainer(env: Env): AppContainer {
       return result;
     };
   const closeShift = withCleanup(endShift(sitesDeps));
+  const leaveSite = withCleanup(changeSite(sitesDeps));
   const downloadShift = startShift(sitesDeps);
   // Al cambiar de día se descartan los registros ya sincronizados del turno anterior
   const startShiftWithRetention: Dependencies['sites']['startShift'] = async (site) => {
@@ -247,9 +272,9 @@ export function createContainer(env: Env): AppContainer {
       login: login(authDeps),
       restoreSession: restoreSession(authDeps),
       refreshSession: refreshSession(authDeps),
-      // Cerrar sesión también descarta el paquete del día (datos locales del turno)
+      // Cerrar sesión descarta el paquete del día y la sede: cada usuario tiene las suyas
       logout: async () => {
-        const cleared = await closeShift();
+        const cleared = await leaveSite();
         if (!cleared.ok) logger.error('No se pudo limpiar el turno', { error: cleared.error.type });
         return signOut();
       },
@@ -272,7 +297,7 @@ export function createContainer(env: Env): AppContainer {
       shiftStatus: shiftStatus(sitesDeps),
       startShift: startShiftWithRetention,
       endShift: closeShift,
-      changeSite: withCleanup(changeSite(sitesDeps)),
+      changeSite: leaveSite,
     },
   };
 

@@ -57,10 +57,10 @@ La contraseña de todos es `demo123`.
 
 ### Datos del turno y QR de prueba
 
-Con el backend aún sin estos endpoints, la app usa **adaptadores mock** (ver `docs/CONTRATO-API-INGRESO-INSPECCION.md`, local):
+Las **sedes** vienen de la API de Citas (`operation/UserHeadquarter/ListUserHeadquarterByUserId`, el mismo endpoint del portal web). Lo demás aún no tiene endpoint, así que la app usa **adaptadores mock** (ver `docs/CONTRATO-API-INGRESO-INSPECCION.md`, local):
 
-- Al iniciar sesión se elige la sede ("Almacén Central" o "Almacén Norte") y se descarga el **paquete del día** de ejemplo. Sus horarios son relativos a la hora de la descarga, así que la demo funciona a cualquier hora. "Mi perfil → Actualizar datos" lo vuelve a generar.
-- `npm run qr:generate` genera en `docs/qr-pruebas/` un PNG por caso y un `index.html` para escanearlos desde la pantalla del PC. Incluye los QR firmados del vehículo (casos 08 a 14) para la sede **Almacén Central**: ingreso normal, llegada tardía, unidad ya ingresada, otra sede, vencido, firma falsa y visitante en lista negra.
+- Al iniciar sesión se elige una de las sedes del usuario y se descarga el **paquete del día** de ejemplo para esa sede. En modo demo (`EXPO_PUBLIC_AUTH_PROVIDER=mock`) se listan "Sede demo 1" y "Sede demo 2". Sus horarios son relativos a la hora de la descarga, así que la demo funciona a cualquier hora. "Mi perfil → Actualizar datos" lo vuelve a generar.
+- `npm run qr:generate` genera en `docs/qr-pruebas/` un PNG por caso y un `index.html` para escanearlos desde la pantalla del PC. Incluye los QR firmados del vehículo (casos 08 a 14) para la sede indicada con `npm run qr:generate -- --site <headquarterId>` (sin `--site`, la "Sede demo 1" del modo demo): ingreso normal, llegada tardía, unidad ya ingresada, otra sede, vencido, firma falsa y visitante en lista negra.
 - Los QR se firman con una **clave de desarrollo** (`src/shared/infrastructure/demo/dev-qr-keys.ts`). En producción la clave pública llega en el paquete del día y la privada solo existe en el backend.
 - Para probar un rechazo del servidor, agrega un visitante con el DUI `07777777-7` sin conexión y luego reconecta: aparece la notificación y el registro en "Requiere atención".
 

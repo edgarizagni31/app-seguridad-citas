@@ -47,7 +47,7 @@ export const shiftStatus =
 export const startShift =
   (deps: Pick<ShiftDeps, 'shiftGateway' | 'store' | 'today'>) =>
   async (site: Site): Promise<Result<ShiftSnapshot, SitesError>> => {
-    const snapshot = await deps.shiftGateway.downloadSnapshot(site.id, deps.today());
+    const snapshot = await deps.shiftGateway.downloadSnapshot(site, deps.today());
     if (!snapshot.ok) return snapshot;
     const saved = await wrapStorage(async () => {
       await deps.store.saveSelectedSite(site);

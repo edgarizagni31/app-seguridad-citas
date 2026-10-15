@@ -62,5 +62,6 @@ export interface EntryRepository {
   list(): Promise<StoredEntry[]>;
   markSynced(id: string): Promise<void>;
   markRejected(id: string, message: string): Promise<void>;
+  markPending(id: string): Promise<void>;
   clearSynced(): Promise<void>;
 }

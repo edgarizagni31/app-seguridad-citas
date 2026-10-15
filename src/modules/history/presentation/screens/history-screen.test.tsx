@@ -54,6 +54,7 @@ describe('HistoryScreen', () => {
         title: 'Ingreso ABC-123',
         reason: 'VisitorBlacklisted',
         message: 'Un visitante está en la lista negra.',
+        canResend: true,
         createdAt: '2026-10-05T16:50:00.000Z',
       },
     ]);

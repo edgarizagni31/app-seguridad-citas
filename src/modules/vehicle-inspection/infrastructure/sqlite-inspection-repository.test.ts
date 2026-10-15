@@ -103,5 +103,12 @@ describe('createSqliteInspectionRepository', () => {
     expect((await repo.list()).map((item) => [item.id, item.syncStatus, item.syncMessage])).toEqual(
       [['insp-2', 'rejected', 'Ya fue inspeccionado.']],
     );
+
+    // Soporte lo reenvía: vuelve a pendiente y sin mensaje
+    await repo.markPending('insp-2');
+    expect(await repo.findById('insp-2')).toMatchObject({
+      syncStatus: 'pending',
+      syncMessage: null,
+    });
   });
 });

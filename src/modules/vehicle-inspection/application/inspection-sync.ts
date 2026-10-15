@@ -55,6 +55,7 @@ export function createInspectionSyncHandler(deps: {
     async onRejected(item, outcome) {
       await deps.repo.markRejected(item.aggregateId, outcome.message ?? outcome.reason);
     },
+    onRequeued: (aggregateId) => deps.repo.markPending(aggregateId),
   };
 }
 

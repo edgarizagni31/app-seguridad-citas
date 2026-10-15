@@ -95,6 +95,13 @@ export function createSqliteInspectionRepository(deps: {
       await db.run("UPDATE inspections SET sync_status = 'synced' WHERE id = ?", [id]);
       notify();
     },
+    async markPending(id) {
+      await db.run(
+        "UPDATE inspections SET sync_status = 'pending', sync_message = NULL WHERE id = ?",
+        [id],
+      );
+      notify();
+    },
     async markRejected(id, message) {
       await db.run(
         "UPDATE inspections SET sync_status = 'rejected', sync_message = ? WHERE id = ?",

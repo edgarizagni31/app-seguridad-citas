@@ -38,6 +38,7 @@ const createRepo = (entries: StoredEntry[] = []) =>
     list: jest.fn(async () => entries),
     markSynced: jest.fn(async () => undefined),
     markRejected: jest.fn(async () => undefined),
+    markPending: jest.fn(async () => undefined),
     clearSynced: jest.fn(async () => undefined),
   }) satisfies EntryRepository;
 
@@ -159,5 +160,7 @@ describe('createEntrySyncHandler', () => {
     await handler.onRejected?.(item, { type: 'rejected', reason: 'VisitorBlacklisted' });
     expect(repo.markRejected).toHaveBeenLastCalledWith('entry-1', 'VisitorBlacklisted');
     expect(handler.describe(item)).toEqual({ title: 'Ingreso ABC-123' });
+    await handler.onRequeued?.('entry-1');
+    expect(repo.markPending).toHaveBeenCalledWith('entry-1');
   });
 });

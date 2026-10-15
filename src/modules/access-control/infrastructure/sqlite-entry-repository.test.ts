@@ -82,5 +82,12 @@ describe('createSqliteEntryRepository', () => {
       ]),
     );
     expect(entries).toHaveLength(2);
+
+    // Soporte lo reenvía: vuelve a pendiente y sin mensaje
+    await repo.markPending('entry-2');
+    expect((await repo.list()).find((entry) => entry.id === 'entry-2')).toMatchObject({
+      syncStatus: 'pending',
+      syncMessage: null,
+    });
   });
 });

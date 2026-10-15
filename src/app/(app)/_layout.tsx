@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { RoleGate } from '@/modules/auth';
+import { RoleGate, useIsSupport } from '@/modules/auth';
 import { ShiftGate } from '@/modules/sites';
 
 import { NotificationsBridge } from '@/core/composition';
@@ -8,6 +8,8 @@ import { NotificationsBridge } from '@/core/composition';
 export { RouteErrorBoundary as ErrorBoundary } from '@/core/composition';
 
 export default function AppLayout() {
+  const isSupport = useIsSupport();
+
   return (
     <RoleGate>
       <ShiftGate>
@@ -15,6 +17,9 @@ export default function AppLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="attention" />
+          <Stack.Protected guard={isSupport}>
+            <Stack.Screen name="support" />
+          </Stack.Protected>
           <Stack.Screen name="entry/visitors" />
           <Stack.Screen
             name="entry/add-visitor"

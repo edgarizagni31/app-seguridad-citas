@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import type { Site } from '../../domain';
 import { useShiftGate, type ShiftGatePhase } from '../view-models/use-shift-gate';
+import { useNeedsShift } from '@/modules/auth';
 import { STRINGS } from '@/shared/lib';
 import {
   AppText,
@@ -25,6 +26,12 @@ const { sites: TEXT } = STRINGS;
 type ShiftGateProps = { children: ReactNode };
 
 export function ShiftGate({ children }: ShiftGateProps) {
+  // Solo soporte no opera la garita: entra sin sede ni paquete del día
+  if (!useNeedsShift()) return children;
+  return <ShiftGateContent>{children}</ShiftGateContent>;
+}
+
+function ShiftGateContent({ children }: ShiftGateProps) {
   const vm = useShiftGate();
   if (vm.phase.type === 'ready') return children;
 

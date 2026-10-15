@@ -3,6 +3,8 @@ import {
   canManageEntry,
   canUseApp,
   isInspector,
+  isSupport,
+  needsShift,
   primaryRoleOf,
   sectionsFor,
 } from './roles';
@@ -30,6 +32,27 @@ describe('políticas de rol', () => {
     expect(canUseApp(user('PACCESO_CLIENTE'))).toBe(false);
     expect(sectionsFor(user('PACCESO_CLIENTE'))).toEqual([]);
     expect(primaryRoleOf(user())).toBeNull();
+  });
+});
+
+describe('soporte', () => {
+  it('PACCESO_SOPORTE usa la app sin necesitar sede', () => {
+    const support = user('PACCESO_SOPORTE');
+
+    expect(isSupport(support)).toBe(true);
+    expect(canUseApp(support)).toBe(true);
+    expect(needsShift(support)).toBe(false);
+    expect(canManageEntry(support)).toBe(false);
+    expect(sectionsFor(support)).toEqual(['history', 'profile']);
+    expect(primaryRoleOf(support)).toBe('support');
+  });
+
+  it('si además opera la garita, necesita sede y su rol principal es seguridad', () => {
+    const both = user('PACCESO_SOPORTE', 'PACCESO_ASEGURIDAD');
+
+    expect(isSupport(both)).toBe(true);
+    expect(needsShift(both)).toBe(true);
+    expect(primaryRoleOf(both)).toBe('security');
   });
 });
 

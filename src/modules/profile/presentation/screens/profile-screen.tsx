@@ -41,23 +41,25 @@ export function ProfileScreen() {
           {vm.roleLabel && <RoleChip label={vm.roleLabel} />}
         </Card>
 
-        <Card>
-          <Row icon="warehouse" label={TEXT.site} value={vm.site?.name ?? '—'} />
-          {vm.minutesSinceUpdate !== null && (
-            <AppText variant="caption" color={colors.textMuted}>
-              {SITES.updatedAgo(vm.minutesSinceUpdate)}
-            </AppText>
-          )}
-          {vm.refreshFailed && <Banner tone="warning" message={TEXT.updateFailed} />}
-          <Button
-            label={SITES.updateData}
-            icon="refresh"
-            variant="outline"
-            loading={vm.refreshing}
-            onPress={vm.refresh}
-          />
-          <Button label={SITES.changeSite} variant="text" onPress={vm.changeSite} />
-        </Card>
+        {vm.showShift && (
+          <Card>
+            <Row icon="warehouse" label={TEXT.site} value={vm.site?.name ?? '—'} />
+            {vm.minutesSinceUpdate !== null && (
+              <AppText variant="caption" color={colors.textMuted}>
+                {SITES.updatedAgo(vm.minutesSinceUpdate)}
+              </AppText>
+            )}
+            {vm.refreshFailed && <Banner tone="warning" message={TEXT.updateFailed} />}
+            <Button
+              label={SITES.updateData}
+              icon="refresh"
+              variant="outline"
+              loading={vm.refreshing}
+              onPress={vm.refresh}
+            />
+            <Button label={SITES.changeSite} variant="text" onPress={vm.changeSite} />
+          </Card>
+        )}
 
         <Card>
           <Row
@@ -66,6 +68,15 @@ export function ProfileScreen() {
             value={vm.pending > 0 ? TEXT.pending(vm.pending) : TEXT.allSynced}
           />
         </Card>
+
+        {vm.isSupport && (
+          <Button
+            label={STRINGS.support.open}
+            icon="lifebuoy"
+            variant="outline"
+            onPress={vm.openSupport}
+          />
+        )}
 
         <Button
           label={STRINGS.session.logout}

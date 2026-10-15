@@ -19,6 +19,7 @@ export type {
   OutboxHandler,
   OutboxItem,
   OutboxStatus,
+  QueuedItem,
   SendFailure,
   SendOutcome,
   SyncSnapshot,

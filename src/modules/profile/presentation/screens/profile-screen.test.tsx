@@ -1,4 +1,5 @@
 import { screen, userEvent } from '@testing-library/react-native';
+import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { useSessionStore } from '@/modules/auth';
@@ -11,17 +12,53 @@ import { renderWithDeps } from '@/test/render-with-deps';
 
 import { ProfileScreen } from './profile-screen';
 
+jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
+
+const router = { push: jest.fn() };
+
 // El paquete de prueba se generó a las 16:42 UTC
 const clock = createFixedClock('2026-10-05T16:57:00Z');
 
-async function setup(overrides: Parameters<typeof renderWithDeps>[1] = {}) {
-  useSessionStore
-    .getState()
-    .setSession(buildSession({ user: buildSessionUser({ roles: ['PACCESO_AHSE'] }) }));
+async function setup(
+  overrides: Parameters<typeof renderWithDeps>[1] = {},
+  roles: string[] = ['PACCESO_AHSE'],
+) {
+  jest.mocked(useRouter).mockReturnValue(router as never);
+  useSessionStore.getState().setSession(buildSession({ user: buildSessionUser({ roles }) }));
   const user = userEvent.setup();
   const result = await renderWithDeps(<ProfileScreen />, { clock, ...overrides });
   return { user, ...result };
 }
+
+describe('ProfileScreen · soporte', () => {
+  it('sin el rol de soporte no muestra el acceso', async () => {
+    await setup();
+
+    await screen.findByText('Almacén Central');
+    expect(
+      screen.queryByRole('button', { name: 'Soporte: datos sin sincronizar' }),
+    ).not.toBeOnTheScreen();
+  });
+
+  it('solo soporte: sin sede y con acceso a la pantalla de soporte', async () => {
+    const { user } = await setup({}, ['PACCESO_SOPORTE']);
+
+    expect(screen.getByText('Soporte')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Actualizar datos' })).not.toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Soporte: datos sin sincronizar' }));
+
+    expect(router.push).toHaveBeenCalledWith('/support');
+  });
+
+  it('soporte que también es de seguridad conserva su sede', async () => {
+    await setup({}, ['PACCESO_ASEGURIDAD', 'PACCESO_SOPORTE']);
+
+    expect(await screen.findByText('Almacén Central')).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: 'Soporte: datos sin sincronizar' }),
+    ).toBeOnTheScreen();
+  });
+});
 
 describe('ProfileScreen', () => {
   it('muestra el usuario, su rol, la sede y la antigüedad de los datos', async () => {

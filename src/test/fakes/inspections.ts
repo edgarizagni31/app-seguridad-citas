@@ -60,6 +60,9 @@ export function createMemoryInspectionRepository(initial: StoredInspection[] = [
     markRejected: jest.fn(async (id: string, syncMessage: string) =>
       update(id, { syncStatus: 'rejected', syncMessage }),
     ),
+    markPending: jest.fn(async (id: string) =>
+      update(id, { syncStatus: 'pending', syncMessage: null }),
+    ),
     clearSynced: jest.fn(async () => undefined),
     delete: jest.fn(async (id: string) => {
       rows.delete(id);

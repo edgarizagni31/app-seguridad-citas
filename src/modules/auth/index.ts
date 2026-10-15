@@ -2,6 +2,8 @@ export { RoleGate } from './presentation/components/role-gate';
 export { UserHeader } from './presentation/components/user-header';
 export {
   useAppSections,
+  useIsSupport,
+  useNeedsShift,
   usePrimaryRole,
   type AppSection,
   type PrimaryRole,

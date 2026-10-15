@@ -5,6 +5,7 @@ import {
   type Logger,
   type OutboxHandler,
   type OutboxItem,
+  type QueuedItem,
   type Result,
   type SendFailure,
   type SendOutcome,
@@ -54,7 +55,7 @@ export function createSyncEngine(deps: SyncEngineDeps) {
   ) {
     await handler.onRejected?.(item, outcome);
     await deps.store.remove(item.id);
-    const attention: AttentionItem = {
+    const attention: Omit<AttentionItem, 'canResend'> = {
       id: deps.createId(),
       kind: item.kind,
       aggregateId: item.aggregateId,
@@ -63,8 +64,8 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       message: outcome.message ?? null,
       createdAt: deps.clock.now().toISOString(),
     };
-    await deps.store.addAttention(attention);
-    deps.onAttention?.(attention);
+    await deps.store.addAttention(attention, item.payload);
+    deps.onAttention?.({ ...attention, canResend: true });
   }
 
   // Devuelve false cuando hay que detenerse para no romper el orden FIFO
@@ -83,7 +84,9 @@ export function createSyncEngine(deps: SyncEngineDeps) {
       return true;
     }
     const attempts = item.attempts + 1;
-    const error = result.error.cause instanceof Error ? result.error.cause.message : 'retryable';
+    const { cause } = result.error;
+    const error =
+      cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : 'retryable';
     if (attempts >= maxAttempts) {
       await deps.store.markFailed(item.id, error);
     } else {
@@ -123,6 +126,14 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     return running;
   }
 
+  const titleOf = (item: OutboxItem) => handlers.get(item.kind)?.describe(item).title ?? item.kind;
+
+  async function forceAndSync(id?: string) {
+    await deps.store.forceDue(deps.clock.now(), id);
+    deps.changes.emit(SYNC_TABLES);
+    return requestSync();
+  }
+
   return {
     async start() {
       await deps.store.recoverInFlight();
@@ -138,6 +149,28 @@ export function createSyncEngine(deps: SyncEngineDeps) {
     async dismissAttention(id: string) {
       await deps.store.dismissAttention(id);
       deps.changes.emit(SYNC_TABLES);
+    },
+    async listQueue(): Promise<QueuedItem[]> {
+      const items = await deps.store.listQueue();
+      return items.map((item) => ({
+        id: item.id,
+        kind: item.kind,
+        aggregateId: item.aggregateId,
+        title: titleOf(item),
+        status: item.status,
+        attempts: item.attempts,
+        lastError: item.lastError,
+        createdAt: item.createdAt,
+      }));
+    },
+    syncNow: () => forceAndSync(),
+    syncItem: (id: string) => forceAndSync(id),
+    async resendAttention(id: string) {
+      const requeued = await deps.store.requeueAttention(id, deps.createId(), deps.clock.now());
+      if (!requeued) return;
+      await handlers.get(requeued.kind)?.onRequeued?.(requeued.aggregateId);
+      deps.changes.emit(SYNC_TABLES);
+      return requestSync();
     },
   };
 }

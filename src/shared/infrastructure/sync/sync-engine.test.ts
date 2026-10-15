@@ -9,26 +9,29 @@ import { createOutboxStore, enqueue } from './outbox';
 import { createSyncEngine } from './sync-engine';
 import { SYNC_MIGRATIONS } from './sync-migrations';
 
-type Behaviour = 'done' | 'reject' | 'retry' | 'throw';
+type Behaviour = 'done' | 'reject' | 'retry' | 'throw' | 'offline';
 
 function createHandler(behaviours: Behaviour[] = []) {
   const sent: OutboxItem[] = [];
   const onRejected = jest.fn(async () => undefined);
+  const onRequeued = jest.fn(async (_aggregateId: string) => undefined);
   const handler: OutboxHandler = {
     kind: 'test',
     describe: (item) => ({ title: `Registro ${item.aggregateId}` }),
     onRejected,
+    onRequeued,
     async send(item) {
       sent.push(item);
       const behaviour = behaviours.shift() ?? 'done';
       if (behaviour === 'throw') throw new Error('boom');
       if (behaviour === 'retry') return err({ type: 'retryable' });
+      if (behaviour === 'offline') return err({ type: 'retryable', cause: 'network' });
       if (behaviour === 'reject')
         return ok({ type: 'rejected', reason: 'VisitorBlacklisted', message: 'En lista negra' });
       return ok({ type: 'done' });
     },
   };
-  return { handler, sent, onRejected };
+  return { handler, sent, onRejected, onRequeued };
 }
 
 async function setup(
@@ -39,7 +42,7 @@ async function setup(
   await runMigrations(db, SYNC_MIGRATIONS);
   const clock = createFixedClock('2026-10-12T15:00:00.000Z');
   const store = createOutboxStore(db);
-  const { handler, sent, onRejected } = createHandler(behaviours);
+  const { handler, sent, onRejected, onRequeued } = createHandler(behaviours);
   const onAttention = jest.fn();
   let ids = 0;
   const engine = createSyncEngine({
@@ -56,7 +59,7 @@ async function setup(
   });
   const add = (id: string, kind = 'test', aggregateId = `agg-${id}`) =>
     enqueue(db, { id, kind, aggregateId, payload: { id } }, clock.now());
-  return { db, clock, engine, add, sent, onRejected, onAttention };
+  return { db, clock, engine, add, sent, onRejected, onRequeued, onAttention };
 }
 
 describe('createSyncEngine', () => {
@@ -97,6 +100,7 @@ describe('createSyncEngine', () => {
         reason: 'VisitorBlacklisted',
         message: 'En lista negra',
         createdAt: '2026-10-12T15:00:00.000Z',
+        canResend: true,
       },
     ]);
     expect(onAttention).toHaveBeenCalledWith(
@@ -203,6 +207,93 @@ describe('createSyncEngine', () => {
     await engine.dismissAttention('att-1');
 
     expect(await engine.listAttention()).toEqual([]);
+  });
+});
+
+describe('createSyncEngine · soporte', () => {
+  it('lista la cola con su título, estado, intentos y último error', async () => {
+    const { engine, add } = await setup(['offline']);
+    await add('1');
+    await add('2', 'desconocido');
+
+    await engine.requestSync();
+    await engine.requestSync();
+
+    expect(await engine.listQueue()).toEqual([
+      {
+        id: '1',
+        kind: 'test',
+        aggregateId: 'agg-1',
+        title: 'Registro agg-1',
+        status: 'pending',
+        attempts: 1,
+        lastError: 'network',
+        createdAt: '2026-10-12T15:00:00.000Z',
+      },
+      expect.objectContaining({ id: '2', title: 'desconocido', status: 'failed' }),
+    ]);
+  });
+
+  it('sincronizar ahora no espera el backoff y reintenta lo fallido desde cero', async () => {
+    const { engine, add, sent } = await setup(['retry', 'retry'], { maxAttempts: 1 });
+    await add('1');
+    await add('2');
+
+    await engine.requestSync();
+    await engine.requestSync();
+    expect((await engine.snapshot()).failed).toBe(2);
+
+    await engine.syncNow();
+
+    expect(sent.map((item) => item.payload)).toEqual([
+      { id: '1' },
+      { id: '2' },
+      { id: '1' },
+      { id: '2' },
+    ]);
+    expect(await engine.listQueue()).toEqual([]);
+  });
+
+  it('sincroniza un solo registro sin tocar los demás', async () => {
+    const { engine, add, sent } = await setup(['retry', 'retry']);
+    await add('1');
+    await add('2');
+    await engine.requestSync();
+    await engine.requestSync();
+    sent.length = 0;
+
+    await engine.syncItem('2');
+
+    expect(sent.map((item) => item.payload)).toEqual([{ id: '2' }]);
+    expect((await engine.listQueue()).map((item) => item.id)).toEqual(['1']);
+  });
+
+  it('reenvía un rechazo con su envío original y el registro vuelve a pendiente', async () => {
+    const { engine, add, sent, onRequeued } = await setup(['reject', 'done']);
+    await add('1');
+    await engine.requestSync();
+
+    await engine.resendAttention('att-1');
+
+    expect(onRequeued).toHaveBeenCalledWith('agg-1');
+    expect(sent.map((item) => item.payload)).toEqual([{ id: '1' }, { id: '1' }]);
+    expect(await engine.listAttention()).toEqual([]);
+    expect(await engine.snapshot()).toEqual({ pending: 0, failed: 0, attention: 0 });
+  });
+
+  it('un aviso sin envío guardado no se puede reenviar', async () => {
+    const { engine, db, onRequeued } = await setup();
+    await db.run(
+      `INSERT INTO attention_items (id, kind, aggregate_id, title, reason, message, created_at)
+       VALUES ('viejo', 'test', 'agg-1', 'Registro agg-1', 'X', NULL, '2026-10-01T00:00:00.000Z')`,
+    );
+
+    expect((await engine.listAttention())[0]?.canResend).toBe(false);
+    await engine.resendAttention('viejo');
+
+    expect(onRequeued).not.toHaveBeenCalled();
+    expect(await engine.listAttention()).toHaveLength(1);
+    expect(await engine.listQueue()).toEqual([]);
   });
 });
 

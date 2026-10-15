@@ -1,13 +1,20 @@
 import { screen, userEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
+import { useSessionStore } from '@/modules/auth';
 import { err, ok } from '@/shared/domain';
+import { buildSession, buildSessionUser } from '@/test/factories/auth';
 import { createFakeSitesUseCases, TEST_SITE } from '@/test/fakes/test-dependencies';
 import { renderWithDeps } from '@/test/render-with-deps';
 
 import { ShiftGate } from './shift-gate';
 
 const NORTE = { id: 'site-norte', name: 'Almacén Norte' };
+
+const signIn = (roles: string[]) =>
+  useSessionStore.getState().setSession(buildSession({ user: buildSessionUser({ roles }) }));
+
+beforeEach(() => signIn(['PACCESO_ASEGURIDAD']));
 
 const renderGate = (sites: ReturnType<typeof createFakeSitesUseCases>) =>
   renderWithDeps(
@@ -18,6 +25,18 @@ const renderGate = (sites: ReturnType<typeof createFakeSitesUseCases>) =>
   );
 
 describe('ShiftGate', () => {
+  it('solo soporte entra sin elegir sede ni descargar el paquete', async () => {
+    signIn(['PACCESO_SOPORTE']);
+    const sites = createFakeSitesUseCases({
+      shiftStatus: jest.fn(async () => ok({ type: 'no-site' as const })),
+    });
+
+    await renderGate(sites);
+
+    expect(screen.getByText('Contenido del turno')).toBeOnTheScreen();
+    expect(sites.shiftStatus).not.toHaveBeenCalled();
+  });
+
   it('con el turno listo muestra el contenido', async () => {
     await renderGate(createFakeSitesUseCases());
 

@@ -99,6 +99,7 @@ export interface InspectionRepository {
   setUploadedPhotos(id: string, count: number): Promise<void>;
   markSynced(id: string): Promise<void>;
   markRejected(id: string, message: string): Promise<void>;
+  markPending(id: string): Promise<void>;
   clearSynced(): Promise<void>;
   delete(id: string): Promise<void>;
 }

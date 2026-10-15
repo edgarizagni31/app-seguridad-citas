@@ -19,6 +19,7 @@ const item = (overrides: Partial<AttentionItem> = {}): AttentionItem => ({
   reason: 'VisitorBlacklisted',
   message: 'Raúl Pineda se encuentra en la lista negra de la sede.',
   createdAt: '2026-10-05T16:50:00.000Z',
+  canResend: true,
   ...overrides,
 });
 

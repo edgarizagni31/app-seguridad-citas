@@ -151,6 +151,14 @@ describe('createInspectionSyncHandler · casos límite', () => {
 
     expect(repo.markRejected).toHaveBeenCalledWith('insp-1', 'InspectionClosed');
   });
+
+  it('al reenviarlo desde soporte vuelve a pendiente', async () => {
+    const { handler, repo } = setup();
+
+    await handler.onRequeued?.('insp-1');
+
+    expect(repo.markPending).toHaveBeenCalledWith('insp-1');
+  });
 });
 
 describe('statusOf / inspectionHistoryFrom', () => {

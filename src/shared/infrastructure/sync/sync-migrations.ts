@@ -27,6 +27,11 @@ export const SYNC_MIGRATIONS: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    // Guarda el envío original para que soporte pueda reenviar un rechazo
+    id: 'sync-002',
+    statements: ['ALTER TABLE attention_items ADD COLUMN payload TEXT'],
+  },
 ];
 
 export { SYNC_TABLES } from '@/shared/domain';

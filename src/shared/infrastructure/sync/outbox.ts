@@ -1,4 +1,4 @@
-import type { AttentionItem, OutboxItem, SyncSnapshot } from '@/shared/domain';
+import type { AttentionItem, OutboxItem, OutboxStatus, SyncSnapshot } from '@/shared/domain';
 
 import type { SqlDatabase } from '../db';
 
@@ -11,6 +11,8 @@ type OutboxRow = {
   created_at: string;
 };
 
+type QueueRow = OutboxRow & { status: OutboxStatus; last_error: string | null };
+
 type AttentionRow = {
   id: string;
   kind: string;
@@ -19,6 +21,7 @@ type AttentionRow = {
   reason: string;
   message: string | null;
   created_at: string;
+  payload: string | null;
 };
 
 export type NewOutboxItem = {
@@ -79,10 +82,10 @@ export function createOutboxStore(db: SqlDatabase) {
         "UPDATE outbox SET status = 'pending', attempts = 0, next_attempt_at = ? WHERE status = 'failed'",
         [now.toISOString()],
       ),
-    async addAttention(item: AttentionItem): Promise<void> {
+    async addAttention(item: Omit<AttentionItem, 'canResend'>, payload: unknown): Promise<void> {
       await db.run(
-        `INSERT INTO attention_items (id, kind, aggregate_id, title, reason, message, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO attention_items (id, kind, aggregate_id, title, reason, message, created_at, payload)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           item.id,
           item.kind,
@@ -91,6 +94,7 @@ export function createOutboxStore(db: SqlDatabase) {
           item.reason,
           item.message,
           item.createdAt,
+          JSON.stringify(payload),
         ],
       );
     },
@@ -106,9 +110,51 @@ export function createOutboxStore(db: SqlDatabase) {
         reason: row.reason,
         message: row.message,
         createdAt: row.created_at,
+        canResend: row.payload !== null,
       }));
     },
     dismissAttention: (id: string) => db.run('DELETE FROM attention_items WHERE id = ?', [id]),
+    async listQueue(): Promise<
+      (OutboxItem & { status: OutboxStatus; lastError: string | null })[]
+    > {
+      const rows = await db.all<QueueRow>('SELECT * FROM outbox ORDER BY created_at, rowid');
+      return rows.map((row) => ({ ...toItem(row), status: row.status, lastError: row.last_error }));
+    },
+    // Lo que agotó sus intentos vuelve a empezar; lo que está enviándose no se toca
+    forceDue: (now: Date, id?: string) =>
+      db.run(
+        `UPDATE outbox SET status = 'pending', next_attempt_at = ?,
+           attempts = CASE WHEN status = 'failed' THEN 0 ELSE attempts END
+         WHERE status != 'in_flight' AND (? IS NULL OR id = ?)`,
+        [now.toISOString(), id ?? null, id ?? null],
+      ),
+    // Devuelve el aviso a la cola con su envío original, en una sola transacción
+    async requeueAttention(
+      id: string,
+      outboxId: string,
+      now: Date,
+    ): Promise<{ readonly kind: string; readonly aggregateId: string } | null> {
+      let requeued: { kind: string; aggregateId: string } | null = null;
+      await db.transaction(async (tx) => {
+        const row = await tx.first<AttentionRow>('SELECT * FROM attention_items WHERE id = ?', [
+          id,
+        ]);
+        if (!row?.payload) return;
+        await enqueue(
+          tx,
+          {
+            id: outboxId,
+            kind: row.kind,
+            aggregateId: row.aggregate_id,
+            payload: JSON.parse(row.payload) as unknown,
+          },
+          now,
+        );
+        await tx.run('DELETE FROM attention_items WHERE id = ?', [id]);
+        requeued = { kind: row.kind, aggregateId: row.aggregate_id };
+      });
+      return requeued;
+    },
     async snapshot(): Promise<SyncSnapshot> {
       const counts = await db.first<{ pending: number; failed: number; attention: number }>(
         `SELECT

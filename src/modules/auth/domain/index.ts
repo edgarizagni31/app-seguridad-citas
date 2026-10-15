@@ -12,9 +12,12 @@ export {
   canUseApp,
   HSE_ROLES,
   isInspector,
+  isSupport,
+  needsShift,
   primaryRoleOf,
   sectionsFor,
   SECURITY_ROLES,
+  SUPPORT_ROLES,
   type AppSection,
   type PrimaryRole,
 } from './roles';

@@ -13,6 +13,16 @@ function setup() {
 }
 
 describe('mockAuthGateway', () => {
+  it('el usuario de soporte llega con el rol PACCESO_SOPORTE', async () => {
+    const { gateway } = setup();
+
+    const result = await gateway.login(credentials('soporte@demo.ransa'));
+    if (!result.ok) throw new Error('se esperaba login exitoso');
+
+    const decoded = jwtTokenDecoder.decode(result.value.idToken);
+    expect(decoded.ok && decoded.value.user.roles).toEqual(['PACCESO_SOPORTE']);
+  });
+
   it('emite un JWT con los claims de R360 que el decodificador real entiende', async () => {
     const { gateway } = setup();
 

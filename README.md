@@ -46,14 +46,15 @@ Las variables `EXPO_PUBLIC_*` quedan dentro del bundle: **nunca pongas secretos 
 
 La contraseña de todos es `demo123`.
 
-| Correo                 | Resultado                                      |
-| ---------------------- | ---------------------------------------------- |
-| `seguridad@demo.ransa` | Ingresa con rol de seguridad                   |
-| `hse@demo.ransa`       | Ingresa con rol HSE (Inspecciones)             |
-| `jefe@demo.ransa`      | Ingresa con ambos roles (todas las pestañas)   |
-| `cliente@demo.ransa`   | Ingresa sin rol de seguridad (acceso denegado) |
-| `cambio@demo.ransa`    | Debe cambiar la contraseña                     |
-| `sinred@demo.ransa`    | Simula un fallo de red                         |
+| Correo                 | Resultado                                        |
+| ---------------------- | ------------------------------------------------ |
+| `seguridad@demo.ransa` | Ingresa con rol de seguridad                     |
+| `hse@demo.ransa`       | Ingresa con rol HSE (Inspecciones)               |
+| `jefe@demo.ransa`      | Ingresa con ambos roles (todas las pestañas)     |
+| `soporte@demo.ransa`   | Ingresa con rol de soporte (Mi perfil → Soporte) |
+| `cliente@demo.ransa`   | Ingresa sin rol de seguridad (acceso denegado)   |
+| `cambio@demo.ransa`    | Debe cambiar la contraseña                       |
+| `sinred@demo.ransa`    | Simula un fallo de red                           |
 
 ### Datos del turno y QR de prueba
 

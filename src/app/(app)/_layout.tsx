@@ -18,7 +18,9 @@ export default function AppLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="attention" />
           <Stack.Protected guard={isSupport}>
-            <Stack.Screen name="support" />
+            <Stack.Screen name="support/index" />
+            <Stack.Screen name="support/database" />
+            <Stack.Screen name="support/table/[name]" />
           </Stack.Protected>
           <Stack.Screen name="entry/visitors" />
           <Stack.Screen

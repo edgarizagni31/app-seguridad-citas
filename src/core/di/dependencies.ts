@@ -27,6 +27,7 @@ import type {
   Clock,
   Connectivity,
   HistorySource,
+  LocalDataInspector,
   Logger,
   NotificationsService,
   Result,
@@ -102,6 +103,7 @@ export type Dependencies = {
   readonly connectivity: Connectivity;
   readonly changes: ChangeFeed;
   readonly sync: SyncService;
+  readonly localData: LocalDataInspector;
   readonly notifications: NotificationsService;
   readonly auth: AuthUseCases;
   readonly accessControl: AccessControlUseCases;

@@ -2,6 +2,7 @@ export type { AppError } from './app-error';
 export { assertNever } from './assert-never';
 export type { ChangeFeed, ChangeListener } from './change-feed';
 export type { Clock } from './clock';
+export type { LocalCell, LocalDataInspector, LocalTable, LocalTablePage } from './local-data';
 export type { LogContext, LogLevel, Logger } from './logger';
 export {
   err,

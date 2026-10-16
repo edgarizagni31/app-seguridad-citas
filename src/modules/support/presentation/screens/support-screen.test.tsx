@@ -11,7 +11,7 @@ import { SupportScreen } from './support-screen';
 
 jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
 
-const router = { back: jest.fn() };
+const router = { back: jest.fn(), push: jest.fn() };
 
 const queued = (overrides: Partial<QueuedItem> = {}): QueuedItem => ({
   id: 'out-1',
@@ -145,6 +145,14 @@ describe('SupportScreen', () => {
     expect(
       await screen.findByText('No se pudo completar la acción. Intenta de nuevo.'),
     ).toBeOnTheScreen();
+  });
+
+  it('abre la base de datos del teléfono', async () => {
+    const { user } = await setup([]);
+
+    await user.press(await screen.findByRole('button', { name: 'Ver base de datos del teléfono' }));
+
+    expect(router.push).toHaveBeenCalledWith('/support/database');
   });
 
   it('sin nada pendiente muestra que todo está sincronizado', async () => {

@@ -62,6 +62,13 @@ export function SupportScreen() {
           onPress={vm.syncAll}
         />
 
+        <Button
+          label={TEXT.openDatabase}
+          icon="database-search-outline"
+          variant="outline"
+          onPress={() => router.push('/support/database')}
+        />
+
         {vm.loading && <ActivityIndicator color={colors.primary} />}
         {!vm.loading && empty && (
           <View style={styles.empty}>

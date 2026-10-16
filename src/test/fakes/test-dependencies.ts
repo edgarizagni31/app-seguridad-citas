@@ -89,6 +89,10 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     connectivity: createFakeConnectivity(),
     changes: createChangeBus(),
     sync: createFakeSync(),
+    localData: {
+      listTables: jest.fn(async () => []),
+      readTable: jest.fn(async () => null),
+    },
     notifications: {
       prepare: jest.fn(async () => undefined),
       notify: jest.fn(async () => undefined),

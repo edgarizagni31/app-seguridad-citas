@@ -50,6 +50,7 @@ import {
 import {
   createChangeBus,
   createLazyDatabase,
+  createLocalDataInspector,
   openExpoSqliteDatabase,
 } from '@/shared/infrastructure/db';
 import {
@@ -253,6 +254,7 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
+    localData: createLocalDataInspector(db),
     notifications,
     history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),
     inspections: {

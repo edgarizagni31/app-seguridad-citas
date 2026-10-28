@@ -6,7 +6,8 @@ import type { QrContent } from '../../domain';
 import { toScanResultView, type ScanResultView } from '../mappers/scan-result-view';
 import { useDependencies } from '@/core/di';
 import type { Result } from '@/shared/domain';
-import { useCameraAccess } from '@/shared/ui';
+import { STRINGS } from '@/shared/lib';
+import { pickQrFromPhoto, useCameraAccess } from '@/shared/ui';
 
 export type QrScanPhase =
   | { readonly type: 'scanning' }
@@ -63,6 +64,22 @@ export function useQrScan<T, E>(target: QrScanTarget<T, E>, onResolved: (value: 
     onResolved(result.value);
   };
 
+  // La foto pasa por la misma validación que la cámara
+  const fromPhoto = async () => {
+    try {
+      const picked = await pickQrFromPhoto();
+      if (picked.type === 'canceled') {
+        locked.current = false;
+        return;
+      }
+      if (picked.type === 'not-found') return reject(STRINGS.scanner.noQrInPhoto);
+      await validate(picked.data);
+    } catch (error) {
+      logger.warn('No se pudo leer el QR de la foto', { error: String(error) });
+      reject(STRINGS.scanner.photoFailed);
+    }
+  };
+
   return {
     camera,
     phase,
@@ -72,6 +89,11 @@ export function useQrScan<T, E>(target: QrScanTarget<T, E>, onResolved: (value: 
       if (locked.current) return;
       locked.current = true;
       void validate(data);
+    },
+    uploadPhoto: () => {
+      if (locked.current) return;
+      locked.current = true;
+      void fromPhoto();
     },
     scanAgain: () => {
       locked.current = false;

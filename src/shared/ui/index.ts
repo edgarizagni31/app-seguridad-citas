@@ -24,5 +24,6 @@ export { SyncBanner } from './components/sync-banner';
 export { TextField } from './components/text-field';
 export * from './theme';
 export { useCameraAccess, type CameraPermissionState } from './hooks/use-camera-access';
+export { pickQrFromPhoto, type QrFromPhoto } from './media/qr-from-photo';
 export { useLiveData } from './hooks/use-live-data';
 export { useOnlineStatus } from './hooks/use-online-status';

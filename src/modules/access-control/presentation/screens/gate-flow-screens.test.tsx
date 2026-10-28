@@ -1,5 +1,6 @@
 import { act, screen, userEvent } from '@testing-library/react-native';
-import { useCameraPermissions } from 'expo-camera';
+import { scanFromURLAsync, useCameraPermissions } from 'expo-camera';
+import { launchImageLibraryAsync } from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { recordPerson, recordUnit, type GateSession } from '../../domain';
@@ -28,7 +29,9 @@ jest.mock('expo-camera', () => ({
     return null;
   },
   useCameraPermissions: jest.fn(),
+  scanFromURLAsync: jest.fn(),
 }));
+jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
   useLocalSearchParams: jest.fn(),
@@ -137,6 +140,96 @@ describe('GateHomeScreen: QR de la cita', () => {
       await screen.findByText('Este QR no es el de una cita. Escanea el QR de la cita.'),
     ).toBeOnTheScreen();
     expect(gate.lookup).not.toHaveBeenCalled();
+  });
+});
+
+describe('GateHomeScreen: foto del QR', () => {
+  async function setup(gate: GateUseCases) {
+    jest
+      .mocked(useCameraPermissions)
+      .mockReturnValue([
+        { granted: true, canAskAgain: true, status: 'granted', expires: 'never' },
+        jest.fn(),
+        jest.fn(),
+      ] as never);
+    const user = prepare();
+    store().reset();
+    await renderWithDeps(<GateHomeScreen />, { gate });
+    return user;
+  }
+  const picked = (uri: string | null) =>
+    jest
+      .mocked(launchImageLibraryAsync)
+      .mockResolvedValue(
+        (uri ? { canceled: false, assets: [{ uri }] } : { canceled: true, assets: null }) as never,
+      );
+
+  it('lee el QR de la foto elegida y busca la cita', async () => {
+    const gate = fakeGate();
+    const user = await setup(gate);
+    picked('file:///qr.png');
+    jest.mocked(scanFromURLAsync).mockResolvedValue([{ type: 'qr', data: QR }] as never);
+
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+
+    expect(scanFromURLAsync).toHaveBeenCalledWith('file:///qr.png', ['qr']);
+    expect(gate.lookup).toHaveBeenCalledWith(QR);
+    expect(router.push).toHaveBeenCalledWith('/gate/mode');
+  });
+
+  it('una foto sin QR lo explica y permite reintentar', async () => {
+    const gate = fakeGate();
+    const user = await setup(gate);
+    picked('file:///gato.png');
+    jest.mocked(scanFromURLAsync).mockResolvedValue([]);
+
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+
+    expect(
+      await screen.findByText(
+        'No se encontró un código QR en la foto. Prueba con una imagen más nítida y centrada.',
+      ),
+    ).toBeOnTheScreen();
+    expect(gate.lookup).not.toHaveBeenCalled();
+  });
+
+  it('si se cancela la galería no pasa nada y se puede volver a intentar', async () => {
+    const gate = fakeGate();
+    const user = await setup(gate);
+    picked(null);
+
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+
+    expect(launchImageLibraryAsync).toHaveBeenCalledTimes(2);
+    expect(gate.lookup).not.toHaveBeenCalled();
+  });
+
+  it('una foto con otro tipo de QR se rechaza igual que con la cámara', async () => {
+    const gate = fakeGate();
+    const user = await setup(gate);
+    picked('file:///unidad.png');
+    jest
+      .mocked(scanFromURLAsync)
+      .mockResolvedValue([{ type: 'qr', data: 'APPSCH00000000000123-ABC-123' }] as never);
+
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+
+    expect(
+      await screen.findByText('Este QR no es el de una cita. Escanea el QR de la cita.'),
+    ).toBeOnTheScreen();
+    expect(gate.lookup).not.toHaveBeenCalled();
+  });
+
+  it('si no se puede leer la foto lo informa', async () => {
+    const user = await setup(fakeGate());
+    jest.mocked(launchImageLibraryAsync).mockRejectedValue(new Error('sin memoria'));
+
+    await user.press(screen.getByRole('button', { name: 'Subir foto del QR' }));
+
+    expect(
+      await screen.findByText('No se pudo leer la foto. Inténtalo de nuevo.'),
+    ).toBeOnTheScreen();
   });
 });
 

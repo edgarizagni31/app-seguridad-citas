@@ -398,6 +398,10 @@ export const STRINGS = {
   scanner: {
     torchOn: 'Encender linterna',
     torchOff: 'Apagar linterna',
+    uploadPhoto: 'Subir foto del QR',
+    noQrInPhoto:
+      'No se encontró un código QR en la foto. Prueba con una imagen más nítida y centrada.',
+    photoFailed: 'No se pudo leer la foto. Inténtalo de nuevo.',
     permission: {
       title: 'Necesitamos acceso a la cámara',
       message:

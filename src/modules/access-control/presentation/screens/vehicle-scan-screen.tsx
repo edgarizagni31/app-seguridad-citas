@@ -162,12 +162,17 @@ export function QrScanScreen<T, E>({
               color={vm.torchOn ? colors.text : colors.textOnDark}
             />
           </Pressable>
-          {onCancel && (
-            <View style={styles.flex}>
-              <Button label={TEXT.cancel} variant="outline" onPress={onCancel} />
-            </View>
-          )}
+          <View style={styles.flex}>
+            <Button
+              label={SCANNER.uploadPhoto}
+              icon="image-outline"
+              variant="outline"
+              disabled={phase.type !== 'scanning'}
+              onPress={vm.uploadPhoto}
+            />
+          </View>
         </View>
+        {onCancel && <Button label={TEXT.cancel} variant="outline" onPress={onCancel} />}
       </View>
     </Screen>
   );

@@ -70,6 +70,14 @@ const config: ExpoConfig = {
         recordAudioAndroid: false,
       },
     ],
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Usamos tus fotos para leer el código QR de una cita desde una imagen.',
+        cameraPermission: CAMERA_PERMISSION,
+        microphonePermission: false,
+      },
+    ],
     'expo-secure-store',
     [
       'expo-build-properties',

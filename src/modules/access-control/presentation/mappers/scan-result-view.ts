@@ -66,6 +66,14 @@ function describeContent(content: QrContent): Omit<ScanResultView, 'readAt' | 'r
         fields: [],
         note: TEXT.notes.vehicleToken,
       };
+    case 'appointmentQr':
+      return {
+        tone: 'info',
+        icon: 'ticket-confirmation-outline',
+        title: TEXT.types.appointmentQr,
+        fields: [],
+        note: TEXT.notes.appointmentQr,
+      };
     case 'unknown':
       return {
         tone: 'error',

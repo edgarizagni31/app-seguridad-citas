@@ -7,6 +7,48 @@ export type {
   VisitorValidation,
   VisitorValidationError,
 } from './access-validation';
+export {
+  DOCUMENT_STATUS,
+  DRIVER_DOCUMENT_REQUIRED,
+  type ConfirmGateEntryRequest,
+  type GateAppointment,
+  type GateDocument,
+  type GateDriver,
+  type GateEntryConfirmation,
+  type GateGatewayError,
+  type GateLookup,
+  type GatePerson,
+  type GatePresentationGateway,
+  type GateUnit,
+  type PresentationItem,
+  type PresentationResult,
+} from './gate-presentation';
+export {
+  availableModes,
+  checkDocument,
+  chooseMode,
+  companionItems,
+  driverOf,
+  isDriver,
+  markCompanion,
+  matchesPerson,
+  matchesUnit,
+  nonDrivers,
+  pedestrianConfirmRequest,
+  presentedPeopleCount,
+  presentedUnitCount,
+  recordPerson,
+  recordUnit,
+  startSession,
+  unitNumber,
+  vehicleConfirmRequest,
+  visibleDocuments,
+  type DocumentCheck,
+  type GateMode,
+  type GateSession,
+  type NothingToConfirm,
+  type PresentedUnit,
+} from './gate-session';
 export { parseQrContent, type QrContent, type QrContentKind } from './qr-content';
 export { QR_RULES } from './qr-rules';
 export type { ScanRecord } from './scan-record';

@@ -7,4 +7,6 @@ export const QR_RULES = {
   // JWT compacto: header.payload.firma en base64url
   signedTokenPattern: /^[\w-]+\.[\w-]+\.[\w-]+$/,
   maxSignedTokenLength: 2048,
+  // AppointmentScheduledVoucher.QrCode: GUID en hexadecimal sin guiones
+  appointmentQrPattern: /^[0-9a-f]{32}$/i,
 } as const;

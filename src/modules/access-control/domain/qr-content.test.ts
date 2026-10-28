@@ -107,4 +107,13 @@ describe('parseQrContent · QR firmado del vehículo', () => {
   it('un texto con puntos que no es base64url no es un token', () => {
     expect(parseQrContent('a.b c.d').kind).toBe('unknown');
   });
+
+  it('reconoce el QR de la cita: 32 caracteres hexadecimales', () => {
+    expect(parseQrContent(' 442C766389044391b4f59d2d5518c4a0 ')).toEqual({
+      kind: 'appointmentQr',
+      qrCode: '442C766389044391b4f59d2d5518c4a0',
+      raw: '442C766389044391b4f59d2d5518c4a0',
+    });
+    expect(parseQrContent('442c766389044391b4f59d2d5518c4a').kind).not.toBe('appointmentQr');
+  });
 });

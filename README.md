@@ -65,6 +65,24 @@ Las **sedes** vienen de la API de Citas (`operation/UserHeadquarter/ListUserHead
 - Los QR se firman con una **clave de desarrollo** (`src/shared/infrastructure/demo/dev-qr-keys.ts`). En producción la clave pública llega en el paquete del día y la privada solo existe en el backend.
 - Para probar un rechazo del servidor, agrega un visitante con el DUI `07777777-7` sin conexión y luego reconecta: aparece la notificación y el registro en "Requiere atención".
 
+### Garita: presentación en puerta e ingreso a sede
+
+La pestaña **Garita** escanea el **QR de la cita** (32 caracteres hexadecimales) y usa tres endpoints de `AccessControl` (rama `epic/access-control` del backend): `ValidateGatePresentation`, `RegisterGatePresentation` y `ConfirmEntrySession`. **Requiere conexión**: los tres validan en el servidor y Confirm necesita los ids que devuelve Register.
+
+- **Vehicular**: elegir placa → ver documentos (Vehículo / Conductor) → «Continuar» registra la llegada de la unidad y su conductor → repetir con otras placas → «Confirmar ingreso (n)» → marcar acompañantes → confirmar.
+- **Peatonal**: elegir persona → ver documentos → «Continuar» registra su llegada → «Confirmar ingreso (n)».
+- Lo presentado vive solo en la sesión: si la app se cierra, se vuelve a escanear y a presentar (Register es idempotente y devuelve los mismos ids).
+- En **modo demo** (`mock`) responde un simulador con las citas de los QR 15 a 19 de `npm run qr:generate`: DELOSI (vehicular, con una placa sin conductor y un visitante con veto), DOLLAR CITY (peatonal), una cita no vigente, una fuera de ventana y una inexistente.
+
+**Probar contra el backend local.** El gateway (`Gateways.WebApi`, `https://localhost:44312`) solo expone HTTPS con certificado de desarrollo, que Android rechaza, y en el teléfono `localhost` no es la PC. Lo más simple es un túnel con certificado válido:
+
+1. Levanta `Gateways.WebApi`, `Services.Appointment.Api` y `Services.Operation.Api` desde la rama `epic/access-control`.
+2. Abre un túnel al puerto 44312: en Visual Studio, _Dev Tunnels_ (acceso público o autenticado), o con ngrok: `ngrok http https://localhost:44312`.
+3. En `.env` (no se versiona): `EXPO_PUBLIC_API_URL=https://<url-del-tunel>/api/` y `EXPO_PUBLIC_AUTH_PROVIDER=r360` (el backend valida el token de R360).
+4. Reinicia Metro con `npm start -- --clear`.
+
+Para que «Confirmar ingreso» funcione la cita debe estar dentro de su ventana `[inicio, inicio + tolerancia]`; si la sede no tiene tolerancia configurada, el backend siempre la rechaza.
+
 ## Scripts
 
 | Script                                                      | Descripción                                               |

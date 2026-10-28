@@ -44,9 +44,15 @@ export {
   vehicleConfirmRequest,
   visibleDocuments,
   type DocumentCheck,
+  type ConfirmGateError,
+  type GateEntryOutcome,
+  type GateError,
   type GateMode,
   type GateSession,
+  type LookupError,
   type NothingToConfirm,
+  type PresentError,
+  type RejectedCompanion,
   type PresentedUnit,
 } from './gate-session';
 export { parseQrContent, type QrContent, type QrContentKind } from './qr-content';

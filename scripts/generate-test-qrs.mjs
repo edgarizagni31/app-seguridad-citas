@@ -125,6 +125,40 @@ CASES.push(
   },
 );
 
+// QR de cita (32 hex) del modo demo: se leen del mock para no duplicarlos
+const gateMock = await readFile(
+  'src/modules/access-control/infrastructure/mock-gate-gateway.ts',
+  'utf8',
+);
+const appointmentQr = (name) => gateMock.match(new RegExp(`${name}: '([0-9a-f]{32})'`))[1];
+CASES.push(
+  {
+    file: '15-cita-vehicular-delosi',
+    content: appointmentQr('delosi'),
+    expected: 'Cita DELOSI · ingreso vehicular (4 placas)',
+  },
+  {
+    file: '16-cita-peatonal-dollar-city',
+    content: appointmentQr('dollarCity'),
+    expected: 'Cita DOLLAR CITY · ingreso peatonal (5 personas)',
+  },
+  {
+    file: '17-cita-no-vigente',
+    content: appointmentQr('notEligible'),
+    expected: 'Cita PRICESMART no vigente: no deja continuar',
+  },
+  {
+    file: '18-cita-fuera-de-ventana',
+    content: appointmentQr('outsideWindow'),
+    expected: 'Cita INKAFARMA fuera de ventana: rechaza al confirmar',
+  },
+  {
+    file: '19-cita-inexistente',
+    content: '00000000000000000000000000000000',
+    expected: 'Cita no encontrada',
+  },
+);
+
 const escape = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 await mkdir(OUTPUT, { recursive: true });

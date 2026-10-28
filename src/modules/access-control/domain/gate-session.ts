@@ -1,6 +1,8 @@
 import {
   DOCUMENT_STATUS,
   type ConfirmGateEntryRequest,
+  type GateEntryConfirmation,
+  type GateGatewayError,
   type GateAppointment,
   type GateDocument,
   type GatePerson,
@@ -132,6 +134,22 @@ export const companionItems = (session: GateSession): PedestrianItem[] =>
   session.arrivedCompanions.map((personId) => ({ mode: 'pedestrian', personId }));
 
 export type NothingToConfirm = { readonly type: 'nothing-to-confirm' };
+
+export type GateError = { readonly type: 'offline' } | GateGatewayError;
+
+export type LookupError = GateError | { readonly type: 'not-found'; readonly message: string };
+
+export type PresentError =
+  GateError | { readonly type: 'not-presented'; readonly reason: string; readonly message: string };
+
+export type ConfirmGateError = GateError | NothingToConfirm;
+
+export type RejectedCompanion = { readonly personId: string; readonly message: string };
+
+export type GateEntryOutcome = {
+  readonly confirmation: GateEntryConfirmation;
+  readonly rejectedCompanions: readonly RejectedCompanion[];
+};
 
 const unique = (ids: readonly string[]) => [...new Set(ids)];
 

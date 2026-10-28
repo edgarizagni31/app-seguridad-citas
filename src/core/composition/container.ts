@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 import type { Dependencies } from '@/core/di';
 import {
   confirmEntry,
+  confirmPedestrianEntry,
+  confirmVehicleEntry,
+  lookupAppointment,
+  presentPerson,
+  presentUnit,
   createEntrySyncHandler,
   entryHistoryFrom,
   entryLogFrom,
@@ -14,7 +19,9 @@ import {
 } from '@/modules/access-control/application';
 import {
   ACCESS_MIGRATIONS,
+  createCitasGateGateway,
   createMockAccessGateway,
+  createMockGateGateway,
   createSqliteEntryRepository,
   es256VehicleQrVerifier,
 } from '@/modules/access-control/infrastructure';
@@ -136,6 +143,13 @@ export function createContainer(env: Env): AppContainer {
 
   // Backend sin estos endpoints todavía: mock hasta implementar el contrato (docs/CONTRATO-API-*)
   const accessGateway = createMockAccessGateway({ isOnline: connectivity.isOnline });
+  const gateDeps = {
+    gateway:
+      env.authProvider === 'mock'
+        ? createMockGateGateway({ clock, isOnline: connectivity.isOnline })
+        : createCitasGateGateway(citasHttp),
+    isOnline: connectivity.isOnline,
+  };
   const entryRepo = createSqliteEntryRepository({
     db,
     changes,
@@ -254,6 +268,13 @@ export function createContainer(env: Env): AppContainer {
     connectivity,
     changes,
     sync,
+    gate: {
+      lookup: lookupAppointment(gateDeps),
+      presentUnit: presentUnit(gateDeps),
+      presentPerson: presentPerson(gateDeps),
+      confirmVehicle: confirmVehicleEntry(gateDeps),
+      confirmPedestrian: confirmPedestrianEntry(gateDeps),
+    },
     localData: createLocalDataInspector(db),
     notifications,
     history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),

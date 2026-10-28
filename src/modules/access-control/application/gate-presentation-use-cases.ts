@@ -4,36 +4,22 @@ import {
   recordPerson,
   recordUnit,
   vehicleConfirmRequest,
+  type ConfirmGateError,
   type GateAppointment,
-  type GateEntryConfirmation,
-  type GateGatewayError,
+  type GateEntryOutcome,
   type GatePresentationGateway,
   type GateSession,
-  type NothingToConfirm,
+  type LookupError,
   type PresentationItem,
   type PresentationResult,
+  type PresentError,
+  type RejectedCompanion,
 } from '../domain';
 import { err, ok, type Result } from '@/shared/domain';
 
 export type GateDeps = {
   readonly gateway: GatePresentationGateway;
   readonly isOnline: () => Promise<boolean>;
-};
-
-export type GateError = { readonly type: 'offline' } | GateGatewayError;
-
-export type LookupError = GateError | { readonly type: 'not-found'; readonly message: string };
-
-export type PresentError =
-  GateError | { readonly type: 'not-presented'; readonly reason: string; readonly message: string };
-
-export type ConfirmGateError = GateError | NothingToConfirm;
-
-export type RejectedCompanion = { readonly personId: string; readonly message: string };
-
-export type GateEntryOutcome = {
-  readonly confirmation: GateEntryConfirmation;
-  readonly rejectedCompanions: readonly RejectedCompanion[];
 };
 
 const OFFLINE = { type: 'offline' } as const;

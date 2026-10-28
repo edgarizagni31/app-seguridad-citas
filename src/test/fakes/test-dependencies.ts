@@ -100,6 +100,13 @@ export function createTestDependencies(overrides: Partial<Dependencies> = {}): D
     },
     auth: createFakeAuthUseCases(),
     accessControl: createFakeAccessControl(clock),
+    gate: {
+      lookup: jest.fn(async () => err({ type: 'offline' as const })),
+      presentUnit: jest.fn(async () => err({ type: 'offline' as const })),
+      presentPerson: jest.fn(async () => err({ type: 'offline' as const })),
+      confirmVehicle: jest.fn(async () => err({ type: 'offline' as const })),
+      confirmPedestrian: jest.fn(async () => err({ type: 'offline' as const })),
+    },
     sites: createFakeSitesUseCases(),
     history: { tables: [], list: jest.fn(async () => []) },
     inspections: createFakeInspections(),

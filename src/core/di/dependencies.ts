@@ -1,5 +1,11 @@
 import type {
   ConfirmEntryError,
+  ConfirmGateError,
+  GateAppointment,
+  GateEntryOutcome,
+  GateSession,
+  LookupError,
+  PresentError,
   EntryDraft,
   IdentifiedVehicle,
   ScanRecord,
@@ -49,6 +55,26 @@ export type AuthUseCases = {
   readonly restoreSession: () => Promise<Result<Session | null, AuthError>>;
   readonly refreshSession: (session: Session) => Promise<Result<Session, AuthError>>;
   readonly logout: () => Promise<Result<void, AuthError>>;
+};
+
+// Presentación en puerta e ingreso a sede: siempre contra el servidor
+export type GateUseCases = {
+  readonly lookup: (qrCode: string) => Promise<Result<GateAppointment, LookupError>>;
+  readonly presentUnit: (
+    session: GateSession,
+    unitId: string,
+    driverDocument: string | null,
+  ) => Promise<Result<GateSession, PresentError>>;
+  readonly presentPerson: (
+    session: GateSession,
+    personId: string,
+  ) => Promise<Result<GateSession, PresentError>>;
+  readonly confirmVehicle: (
+    session: GateSession,
+  ) => Promise<Result<GateEntryOutcome, ConfirmGateError>>;
+  readonly confirmPedestrian: (
+    session: GateSession,
+  ) => Promise<Result<GateEntryOutcome, ConfirmGateError>>;
 };
 
 export type AccessControlUseCases = {
@@ -103,6 +129,7 @@ export type Dependencies = {
   readonly connectivity: Connectivity;
   readonly changes: ChangeFeed;
   readonly sync: SyncService;
+  readonly gate: GateUseCases;
   readonly localData: LocalDataInspector;
   readonly notifications: NotificationsService;
   readonly auth: AuthUseCases;

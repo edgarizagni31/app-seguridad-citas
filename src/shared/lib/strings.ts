@@ -447,6 +447,7 @@ export const STRINGS = {
     appointment: 'Nº de cita',
     window: (start: string, end: string) => `Cita ${start} – ${end}`,
     notEligible: 'La cita no está habilitada para ingresar. No se puede registrar la llegada.',
+    nothingToConfirm: 'Primero registra la llegada de al menos una unidad o persona.',
     outsideWindow:
       'La cita está fuera de su ventana de ingreso. Puedes registrar la llegada, pero el ingreso solo se confirma dentro del horario.',
     modeTitle: '¿Qué tipo de ingreso vas a registrar?',
@@ -517,5 +518,10 @@ export const STRINGS = {
     hseInfo: 'La inspección vehicular la realiza el equipo HSE.',
     backHome: 'Volver al inicio',
     inspect: 'Ir a inspección (opcional)',
+    inspectPlate: (plate: string) => `Inspeccionar ${plate} (opcional)`,
+    scanAnother: 'Escanear otra cita',
+    documentsOf: (plate: string) => `Documentos de ${plate}`,
+    arrivalOf: (name: string) => `Llegada de ${name}`,
+    roleTitle: 'Control de Garita',
   },
 } as const;

@@ -4,8 +4,12 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScanFrame } from '../components/scan-frame';
 import { ScanRejectionPanel } from '../components/scan-rejection-panel';
-import { useVehicleScan, type VehicleQrResolver } from '../view-models/use-vehicle-scan';
+import type { UnitValidationError } from '../../domain';
+import { describeValidationError } from '../mappers/validation-message';
+import { useQrScan, type QrScanTarget } from '../view-models/use-vehicle-scan';
+import { useDependencies } from '@/core/di';
 import { UserHeader } from '@/modules/auth';
+import type { Result } from '@/shared/domain';
 import { STRINGS } from '@/shared/lib';
 import {
   AppText,
@@ -22,21 +26,61 @@ import {
 const { entry: TEXT, scanner: SCANNER } = STRINGS;
 const FRAME_SIZE = 200;
 
-type VehicleScanScreenProps<T> = {
+export type QrScanTexts = {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly hint: string;
+  readonly validating: string;
+};
+
+type QrScanScreenProps<T, E> = {
   roleLabel: string;
-  resolve: VehicleQrResolver<T>;
+  target: QrScanTarget<T, E>;
+  texts: QrScanTexts;
   onResolved: (value: T) => void;
   // Solo cuando el escáner se abre desde otro flujo
   onCancel?: () => void;
 };
 
-export function VehicleScanScreen<T>({
+const VEHICLE_TEXTS: QrScanTexts = {
+  title: TEXT.scanTitle,
+  subtitle: TEXT.scanSubtitle,
+  hint: TEXT.scanHint,
+  validating: TEXT.validating,
+};
+
+type VehicleScanScreenProps<T> = {
+  roleLabel: string;
+  resolve: (token: string) => Promise<Result<T, UnitValidationError>>;
+  onResolved: (value: T) => void;
+  onCancel?: () => void;
+};
+
+// Escáner del QR firmado del vehículo (HSE)
+export function VehicleScanScreen<T>({ resolve, ...props }: VehicleScanScreenProps<T>) {
+  const { config } = useDependencies();
+  return (
+    <QrScanScreen
+      {...props}
+      texts={VEHICLE_TEXTS}
+      target={{
+        kind: 'vehicleToken',
+        resolve,
+        describe: (error) => describeValidationError(error, config.timeZone),
+        notMatching: TEXT.rejection.notVehicleQr,
+      }}
+    />
+  );
+}
+
+export function QrScanScreen<T, E>({
   roleLabel,
-  resolve,
+  target,
+  texts,
   onResolved,
   onCancel,
-}: VehicleScanScreenProps<T>) {
-  const vm = useVehicleScan(resolve, onResolved);
+}: QrScanScreenProps<T, E>) {
+  const vm = useQrScan(target, onResolved);
   const focused = useIsFocused();
   const { phase, camera } = vm;
   const cameraOn = focused && camera.state === 'granted' && phase.type === 'scanning';
@@ -47,9 +91,9 @@ export function VehicleScanScreen<T>({
         <UserHeader roleLabel={roleLabel} />
         <View style={styles.titles}>
           <AppText variant="heading" role="heading">
-            {TEXT.scanTitle}
+            {texts.title}
           </AppText>
-          <AppText color={colors.textMuted}>{TEXT.scanSubtitle}</AppText>
+          <AppText color={colors.textMuted}>{texts.subtitle}</AppText>
         </View>
 
         <View style={[styles.cameraCard, phase.type === 'rejected' && styles.panelCard]}>
@@ -81,18 +125,18 @@ export function VehicleScanScreen<T>({
                 <View
                   style={[StyleSheet.absoluteFill, styles.validating]}
                   role="progressbar"
-                  aria-label={TEXT.validating}
+                  aria-label={texts.validating}
                 >
                   <ActivityIndicator color={colors.textOnDark} size="large" />
                   <AppText variant="bodyStrong" color={colors.textOnDark}>
-                    {TEXT.validating}
+                    {texts.validating}
                   </AppText>
                 </View>
               ) : (
                 <View style={styles.hint}>
                   <Icon name="qrcode-scan" color={colors.textOnDark} />
                   <AppText variant="label" color={colors.textOnDark}>
-                    {TEXT.scanHint}
+                    {texts.hint}
                   </AppText>
                 </View>
               )}

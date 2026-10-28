@@ -1,28 +1,44 @@
 import { useRouter } from 'expo-router';
 
-import type { UnitValidation } from '../../domain';
-import { useEntryFlowStore } from '../stores/entry-flow-store';
+import type { GateAppointment } from '../../domain';
+import { gateErrorMessage } from '../mappers/gate-text';
+import { useGateFlowStore } from '../stores/gate-flow-store';
 import { useDependencies } from '@/core/di';
 import { STRINGS } from '@/shared/lib';
 
-import { VehicleScanScreen } from './vehicle-scan-screen';
+import { QrScanScreen, type QrScanTexts } from './vehicle-scan-screen';
 
-// Inicio de Garita (RF-A3): escanear el QR del vehículo
+const { gate: TEXT } = STRINGS;
+
+const TEXTS: QrScanTexts = {
+  title: TEXT.scanTitle,
+  subtitle: TEXT.scanSubtitle,
+  hint: TEXT.scanHint,
+  validating: TEXT.validating,
+};
+
+// Inicio de Garita: escanear el QR de la cita (ValidateGatePresentation)
 export function GateHomeScreen() {
   const router = useRouter();
-  const { accessControl } = useDependencies();
-  const start = useEntryFlowStore((state) => state.start);
+  const { gate } = useDependencies();
+  const start = useGateFlowStore((state) => state.start);
 
-  const admit = (validation: UnitValidation) => {
-    start(validation);
-    router.push('/entry/visitors');
+  const open = (appointment: GateAppointment) => {
+    start(appointment);
+    router.push('/gate/mode');
   };
 
   return (
-    <VehicleScanScreen
+    <QrScanScreen
       roleLabel={STRINGS.session.securityRole}
-      resolve={accessControl.validateUnit}
-      onResolved={admit}
+      texts={TEXTS}
+      target={{
+        kind: 'appointmentQr',
+        resolve: gate.lookup,
+        describe: gateErrorMessage,
+        notMatching: TEXT.notAppointmentQr,
+      }}
+      onResolved={open}
     />
   );
 }

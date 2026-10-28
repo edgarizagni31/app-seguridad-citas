@@ -1,5 +1,12 @@
 export { AddVisitorScreen } from './presentation/screens/add-visitor-screen';
 export { EntryConfirmedScreen } from './presentation/screens/entry-confirmed-screen';
+export { GateConfirmedScreen } from './presentation/screens/gate-confirmed-screen';
+export { GateModeScreen } from './presentation/screens/gate-mode-screen';
+export { GatePeopleScreen } from './presentation/screens/gate-people-screen';
+export { GatePersonScreen } from './presentation/screens/gate-person-screen';
+export { GateUnitScreen } from './presentation/screens/gate-unit-screen';
+export { GateUnitsScreen } from './presentation/screens/gate-units-screen';
+export { GateVisitorsScreen } from './presentation/screens/gate-visitors-screen';
 export { GateHomeScreen } from './presentation/screens/gate-home-screen';
 export { VehicleLookupScreen } from './presentation/screens/vehicle-lookup-screen';
 export { VehicleScanScreen } from './presentation/screens/vehicle-scan-screen';

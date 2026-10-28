@@ -17,6 +17,13 @@ export default function AppLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="attention" />
+          <Stack.Screen name="gate/mode" />
+          <Stack.Screen name="gate/units" />
+          <Stack.Screen name="gate/unit/[unitId]" />
+          <Stack.Screen name="gate/visitors" />
+          <Stack.Screen name="gate/people" />
+          <Stack.Screen name="gate/person/[personId]" />
+          <Stack.Screen name="gate/confirmed" options={{ gestureEnabled: false }} />
           <Stack.Protected guard={isSupport}>
             <Stack.Screen name="support/index" />
             <Stack.Screen name="support/database" />

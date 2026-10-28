@@ -8,6 +8,7 @@ import type {
   PresentationResult,
 } from '../domain';
 import { err, normalizeDocument, ok, type Clock } from '@/shared/domain';
+import { DEMO_VEHICLE_IDS } from '@/shared/infrastructure/demo';
 
 // QR de cita de la demo (32 hex, como AppointmentScheduledVoucher.QrCode); los usa scripts/generate-test-qrs.mjs
 export const DEMO_APPOINTMENT_QRS = {
@@ -57,9 +58,10 @@ const unit = (
   plate: string,
   driverOf: GatePerson | null,
   documents?: GateDocument[],
+  transportUnitId?: string,
 ): GateUnit => ({
   id,
-  transportUnitId: `tu-${id}`,
+  transportUnitId: transportUnitId ?? `tu-${id}`,
   plate,
   normalizedPlate: plate.replace(/[^A-Z0-9]/gi, '').toUpperCase(),
   driver: driverOf
@@ -100,12 +102,19 @@ const appointment = (
 const APPOINTMENTS: Record<string, GateAppointment> = {
   [DEMO_APPOINTMENT_QRS.delosi]: appointment('v-delosi', 'APPASP0000000000000093', 'DELOSI', {
     units: [
-      unit('vtu-abc', 'ABC-123', LUIS),
-      unit('vtu-xyz', 'XYZ-789', MARIO, [
-        doc('vtu-xyz-tc', 'Tarjeta de circulación'),
-        doc('vtu-xyz-soat', 'SOAT', { status: 6, expiresAt: '2026-09-30T00:00:00' }),
-        doc('vtu-xyz-old', 'SOAT', { status: 5 }),
-      ]),
+      // Mismos ids que el paquete del día de ejemplo: «Ir a inspección» encuentra la unidad
+      unit('vtu-abc', 'ABC-123', LUIS, undefined, DEMO_VEHICLE_IDS.pendingEntry),
+      unit(
+        'vtu-xyz',
+        'XYZ-789',
+        MARIO,
+        [
+          doc('vtu-xyz-tc', 'Tarjeta de circulación'),
+          doc('vtu-xyz-soat', 'SOAT', { status: 6, expiresAt: '2026-09-30T00:00:00' }),
+          doc('vtu-xyz-old', 'SOAT', { status: 5 }),
+        ],
+        DEMO_VEHICLE_IDS.inProgress,
+      ),
       // Sin conductor asignado: el backend pide su documento al presentarla
       unit('vtu-lmn', 'LMN-321', null),
       unit('vtu-qwe', 'QWE-456', JORGE_D),

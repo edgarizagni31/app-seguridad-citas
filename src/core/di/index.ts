@@ -3,6 +3,7 @@ export type {
   AppConfig,
   AuthUseCases,
   Dependencies,
+  GateUseCases,
   InspectionUseCases,
   SitesUseCases,
 } from './dependencies';

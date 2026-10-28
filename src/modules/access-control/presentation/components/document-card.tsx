@@ -4,15 +4,27 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import type { DocumentCheck, GateDocument } from '../../domain';
 import { formatDate, STRINGS } from '@/shared/lib';
-import { AppText, Button, colors, Icon, type IconName, radius, sizes, spacing } from '@/shared/ui';
+import {
+  AppText,
+  Button,
+  type ChipTone,
+  colors,
+  Icon,
+  type IconName,
+  radius,
+  shadows,
+  sizes,
+  spacing,
+  StatusChip,
+} from '@/shared/ui';
 
 const { gate: TEXT } = STRINGS;
 
-const CHECK_ICON: Record<DocumentCheck, { icon: IconName; color: string }> = {
-  valid: { icon: 'check-circle', color: colors.success },
-  pending: { icon: 'clock-alert-outline', color: colors.warning },
-  expired: { icon: 'alert-circle', color: colors.danger },
-  rejected: { icon: 'close-circle', color: colors.danger },
+const CHECK: Record<DocumentCheck, { icon: IconName; color: string; tone: ChipTone }> = {
+  valid: { icon: 'check-circle', color: colors.success, tone: 'success' },
+  pending: { icon: 'clock-alert-outline', color: colors.warning, tone: 'warning' },
+  expired: { icon: 'alert-circle', color: colors.danger, tone: 'danger' },
+  rejected: { icon: 'close-circle', color: colors.danger, tone: 'danger' },
 };
 
 type DocumentCardProps = {
@@ -25,7 +37,7 @@ type DocumentCardProps = {
 export function DocumentCard({ document, check, timeZone }: DocumentCardProps) {
   const [open, setOpen] = useState(false);
   const name = document.name ?? TEXT.document;
-  const { icon, color } = CHECK_ICON[check];
+  const { icon, color, tone } = CHECK[check];
   const status =
     check === 'valid' && document.expiresAt
       ? TEXT.expiresOn(formatDate(new Date(document.expiresAt), timeZone))
@@ -39,15 +51,13 @@ export function DocumentCard({ document, check, timeZone }: DocumentCardProps) {
         </AppText>
         <Icon name={icon} color={color} size={sizes.icon} />
       </View>
-      <AppText variant="caption" color={check === 'valid' ? colors.textMuted : color}>
-        {status}
-      </AppText>
       <View style={styles.row}>
         {document.fileUrl ? (
           <Image
             source={{ uri: document.fileUrl }}
             style={styles.thumbnail}
             contentFit="cover"
+            transition={150}
             accessibilityIgnoresInvertColors
           />
         ) : (
@@ -68,9 +78,13 @@ export function DocumentCard({ document, check, timeZone }: DocumentCardProps) {
           <Icon name="magnify-scan" color={colors.primaryText} />
         </Pressable>
       </View>
+      <StatusChip label={status} tone={tone} icon={icon} />
       {document.fileUrl && (
         <Modal visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
           <View style={styles.viewer}>
+            <AppText variant="bodyStrong" color={colors.textOnDark}>
+              {name}
+            </AppText>
             <Image
               source={{ uri: document.fileUrl }}
               style={styles.flex}
@@ -88,25 +102,34 @@ export function DocumentCard({ document, check, timeZone }: DocumentCardProps) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    ...shadows.card,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  thumbnail: { flex: 1, height: 96, borderRadius: radius.md, backgroundColor: colors.border },
-  empty: { alignItems: 'center', justifyContent: 'center', gap: spacing.xxs },
+  thumbnail: { flex: 1, height: 110, borderRadius: radius.md, backgroundColor: colors.border },
+  empty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xxs,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.background,
+  },
   view: {
-    width: sizes.button,
-    height: sizes.button,
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
     backgroundColor: colors.infoTint,
   },
-  dimmed: { opacity: 0.5 },
+  dimmed: { opacity: 0.45 },
   viewer: { flex: 1, gap: spacing.md, padding: spacing.md, backgroundColor: colors.text },
 });

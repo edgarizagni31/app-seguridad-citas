@@ -2,11 +2,13 @@ import { Redirect } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppointmentHeader } from '../components/appointment-header';
+import { GateFooter } from '../components/gate-footer';
+import { GateProgress } from '../components/gate-progress';
 import { GateTopBar } from '../components/gate-top-bar';
 import { PersonRow } from '../components/person-row';
 import { useGatePeople } from '../view-models/use-gate-flow';
 import { STRINGS } from '@/shared/lib';
-import { AppText, Banner, Button, colors, Screen, spacing, TextField } from '@/shared/ui';
+import { AppText, Banner, Button, EmptyState, Screen, spacing, TextField } from '@/shared/ui';
 
 const { gate: TEXT } = STRINGS;
 
@@ -19,9 +21,16 @@ export function GatePeopleScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <GateTopBar title={TEXT.pedestrian} />
         <AppointmentHeader appointment={vm.session.appointment} />
-        <AppText variant="bodyStrong" role="heading">
-          {TEXT.peopleTitle(vm.expectedCount)}
-        </AppText>
+        <View style={styles.heading}>
+          <AppText variant="heading" role="heading">
+            {TEXT.peopleTitle(vm.expectedCount)}
+          </AppText>
+          <GateProgress
+            done={vm.presentedCount}
+            total={vm.expectedCount}
+            label={TEXT.peopleProgress(vm.presentedCount, vm.expectedCount)}
+          />
+        </View>
         <TextField
           label={TEXT.searchPeople}
           icon="magnify"
@@ -30,7 +39,13 @@ export function GatePeopleScreen() {
           value={vm.query}
           onChangeText={vm.setQuery}
         />
-        {vm.people.length === 0 && <AppText color={colors.textMuted}>{TEXT.noPeople}</AppText>}
+        {vm.people.length === 0 && (
+          <EmptyState
+            icon="account-search-outline"
+            title={TEXT.noPeople}
+            message={TEXT.searchHint}
+          />
+        )}
         {vm.people.map((person) => (
           <PersonRow
             key={person.id}
@@ -41,7 +56,7 @@ export function GatePeopleScreen() {
         ))}
       </ScrollView>
       {vm.presentedCount > 0 && (
-        <View style={styles.footer}>
+        <GateFooter>
           {vm.error && <Banner tone="error" message={vm.error} />}
           <Button
             label={TEXT.confirmCount(vm.presentedCount)}
@@ -51,7 +66,7 @@ export function GatePeopleScreen() {
             disabled={!vm.canConfirm}
             onPress={vm.confirm}
           />
-        </View>
+        </GateFooter>
       )}
     </Screen>
   );
@@ -59,10 +74,5 @@ export function GatePeopleScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, gap: spacing.md },
-  footer: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
+  heading: { gap: spacing.sm },
 });

@@ -40,10 +40,12 @@ export function PersonRow({ person, arrived, onPress, trailing }: PersonRowProps
     >
       <Avatar name={person.name} />
       <View style={styles.flex}>
-        <AppText variant="bodyStrong">{person.name}</AppText>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {person.name}
+        </AppText>
         {person.documentNumber && (
-          <AppText variant="caption" color={colors.textMuted}>
-            {person.documentNumber}
+          <AppText variant="caption" color={colors.info}>
+            {TEXT.documentShort(person.documentNumber)}
           </AppText>
         )}
       </View>
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  arrived: { borderColor: colors.success, backgroundColor: colors.successTint },
-  disabled: { opacity: 0.55 },
+  arrived: { borderWidth: 1.5, borderColor: colors.success, backgroundColor: colors.successTint },
+  disabled: { opacity: 0.55, backgroundColor: colors.background },
   pressed: { opacity: 0.8 },
 });

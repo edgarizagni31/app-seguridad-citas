@@ -308,7 +308,8 @@ describe('GateUnitScreen', () => {
     await renderWithDeps(<GateUnitScreen />, { gate });
 
     expect(screen.getByText('Tarjeta de circulación')).toBeOnTheScreen();
-    await user.press(screen.getByRole('radio', { name: 'Conductor' }));
+    await user.press(screen.getByRole('tab', { name: 'Conductor' }));
+    expect(screen.getByRole('tab', { name: 'Conductor' })).toBeSelected();
     expect(screen.getByText('Luis Hernández')).toBeOnTheScreen();
     expect(screen.getByText('Documentos del conductor')).toBeOnTheScreen();
 
@@ -364,7 +365,7 @@ describe('GateVisitorsScreen', () => {
     const gate = fakeGate();
     await renderWithDeps(<GateVisitorsScreen />, { gate });
 
-    expect(screen.getByText('Conductor · ABC-123')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Placa ABC-123')).toBeOnTheScreen();
     expect(screen.getByText('Acompañantes (3)')).toBeOnTheScreen();
     // Ana y Pedro se marcan; Raúl no está habilitado y no tiene selector
     const arrivedButtons = screen.getAllByRole('radio', { name: 'Llegó' });

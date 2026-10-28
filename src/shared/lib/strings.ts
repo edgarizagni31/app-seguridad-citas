@@ -524,6 +524,23 @@ export const STRINGS = {
     inspect: 'Ir a inspección (opcional)',
     inspectPlate: (plate: string) => `Inspeccionar ${plate} (opcional)`,
     scanAnother: 'Escanear otra cita',
+    windowStatus: { onTime: 'En horario', outside: 'Fuera de horario', notEligible: 'No vigente' },
+    unitsProgress: (done: number, total: number) =>
+      `${done} de ${total} ${total === 1 ? 'placa registrada' : 'placas registradas'}`,
+    peopleProgress: (done: number, total: number) =>
+      `${done} de ${total} ${total === 1 ? 'persona llegó' : 'personas llegaron'}`,
+    driverOf: (name: string) => `Conductor: ${name}`,
+    noDriverShort: 'Sin conductor asignado',
+    unitsCount: (count: number) => `${count} ${count === 1 ? 'unidad' : 'unidades'}`,
+    peopleCount: (count: number) => `${count} ${count === 1 ? 'persona' : 'personas'}`,
+    modeUnavailable: {
+      vehicular: 'La cita no tiene unidades',
+      pedestrian: 'La cita no tiene personas sin vehículo',
+    },
+    documentShort: (document: string) => `Doc. ${document}`,
+    summary: 'Resumen del ingreso',
+    searchHint: 'Revisa lo que escribiste e inténtalo de nuevo.',
+    plate: (plate: string) => `Placa ${plate}`,
     documentsOf: (plate: string) => `Documentos de ${plate}`,
     arrivalOf: (name: string) => `Llegada de ${name}`,
     roleTitle: 'Control de Garita',

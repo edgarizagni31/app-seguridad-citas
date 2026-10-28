@@ -47,6 +47,12 @@ export function useGateMode() {
   return {
     session,
     modes,
+    counts: session
+      ? {
+          units: session.appointment.units.length,
+          people: nonDrivers(session.appointment).length,
+        }
+      : null,
     choose: (mode: GateMode) => {
       setMode(mode);
       router.push(mode === 'vehicular' ? '/gate/units' : '/gate/people');
@@ -71,8 +77,10 @@ export function useGateUnits() {
         id: unit.id,
         plate: unit.plate,
         number: TEXT.unitNumber(unitNumber(appointment!, unit.id)),
+        driverName: unit.driver?.name ?? null,
         presented: Boolean(session?.presentedUnits[unit.id]),
       })),
+    totalUnits: appointment?.units.length ?? 0,
     presentedCount: session ? presentedUnitCount(session) : 0,
     canConfirm: Boolean(appointment?.eligible),
     open: (unitId: string) => router.push({ pathname: '/gate/unit/[unitId]', params: { unitId } }),

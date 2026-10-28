@@ -21,6 +21,7 @@ export { SegmentedControl, type SegmentOption } from './components/segmented-con
 export { SelectField } from './components/select-field';
 export { StatusChip, type ChipTone } from './components/status-chip';
 export { SyncBanner } from './components/sync-banner';
+export { Tabs, type TabOption } from './components/tabs';
 export { TextField } from './components/text-field';
 export * from './theme';
 export { useCameraAccess, type CameraPermissionState } from './hooks/use-camera-access';

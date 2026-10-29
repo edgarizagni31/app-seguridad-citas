@@ -3,7 +3,7 @@
 App móvil (Android 10+ e iOS) para la garita de los almacenes de Ransa.
 
 - **Seguridad:** escanea el QR firmado del vehículo, marca qué visitantes llegaron, agrega visitantes y confirma el ingreso. Si alguien llega tarde, se vuelve a escanear el QR.
-- **HSE:** ve los vehículos ingresados del día agrupados por cita y hace la inspección vehicular de 15 pasos con fotos.
+- **HSE:** escanea el QR de la cita, elige la placa y hace la inspección vehicular con el protocolo que define el backend, con fotos.
 - **Sin conexión:** todo se guarda primero en el teléfono (SQLite) y se envía al reconectar. Si el servidor rechaza algo hecho sin red, avisa con una notificación y lo deja en "Requiere atención".
 
 **Stack:** Expo SDK 57, React Native 0.86, TypeScript estricto, Expo Router, Zustand, Zod, expo-sqlite, NetInfo, @noble/curves (QR ES256) y Jest + Testing Library.
@@ -83,6 +83,17 @@ La pestaña **Garita** escanea el **QR de la cita** (32 caracteres hexadecimales
 
 Para que «Confirmar ingreso» funcione la cita debe estar dentro de su ventana `[inicio, inicio + tolerancia]`; si la sede no tiene tolerancia configurada, el backend siempre la rechaza.
 
+### Inspección vehicular (HSE)
+
+La pestaña **Inspecciones** usa dos endpoints de `VehicleInspection`: `GetInspectionProtocol` (preguntas, opciones y respuestas ya guardadas de una unidad) y `ExecuteInspectionProtocol` (guarda respuestas y fotos y devuelve si es conforme). Es opcional y no bloquea la garita.
+
+- **Flujo:** «Escanear QR de la cita» (o subir su foto) → elegir la placa → «Iniciar inspección» descarga el protocolo → cuestionario → «Enviar inspección» → Conforme, o No conforme con la lista de controles que fallaron. Desde Garita, «Ir a inspección» abre el mismo inicio.
+- **Sin conexión:** empezar una inspección nueva necesita red (hay que descargar el protocolo). Un borrador se continúa sin red, y al enviar queda «Pendiente de envío» hasta reconectar.
+- **Fotos:** cada foto se comprime a 500 KB o menos (el límite del backend) y se envía en base64 en el mismo request. Se borran del teléfono cuando el servidor confirma.
+- **Datos:** las inspecciones se guardan en la tabla `unit_inspections` (una por voucher + unidad) y el envío en la `outbox`; las dos se ven en el visor de soporte.
+- En **modo demo** (`mock`) el protocolo simulado es el cuestionario v1 de 15 pasos: QR 15 → DELOSI → ABC-123. Responder «No» en un precinto da una inspección no conforme.
+- El backend usa hoy el **primer protocolo activo**; la elección por sede o cliente y el 5-bis de una inspección no conforme aún no existen.
+
 ## Scripts
 
 | Script                                                      | Descripción                                               |
@@ -106,7 +117,7 @@ src/app/                        Rutas (Expo Router), solo re-exportan pantallas
 src/modules/auth/               Sesión R360, roles (Seguridad y HSE)
 src/modules/sites/              Sede y paquete del día
 src/modules/access-control/     QR firmado, validación de la unidad e ingreso de visitantes
-src/modules/vehicle-inspection/ Tablero HSE, cuestionario como datos, fotos e inspección
+src/modules/vehicle-inspection/ Protocolo del backend, cuestionario, fotos e inspección
 src/modules/history/            Historial del turno y bandeja "Requiere atención"
 src/modules/profile/            Mi perfil
 src/shared/                     Kernel común: Result, SQLite, outbox y sincronización, design system

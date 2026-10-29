@@ -15,5 +15,14 @@ export const encodeBase64UrlUtf8 = (text: string) => toBase64Url(encodeBase64Utf
 export const decodeBase64UrlBytes = (value: string) =>
   Uint8Array.from(atob(toBase64(value)), (char) => char.charCodeAt(0));
 
-export const encodeBase64UrlBytes = (bytes: Uint8Array) =>
-  toBase64Url(btoa(String.fromCharCode(...bytes)));
+// Por bloques: String.fromCharCode(...bytes) desborda la pila con archivos grandes (fotos)
+const CHUNK = 0x8000;
+export function encodeBase64Bytes(bytes: Uint8Array): string {
+  let binary = '';
+  for (let start = 0; start < bytes.length; start += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + CHUNK));
+  }
+  return btoa(binary);
+}
+
+export const encodeBase64UrlBytes = (bytes: Uint8Array) => toBase64Url(encodeBase64Bytes(bytes));

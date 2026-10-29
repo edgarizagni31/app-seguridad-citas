@@ -1,19 +1,31 @@
-import { useRouter } from 'expo-router';
+import { useInspectionScan } from '../view-models/use-inspections-flow';
+import { gateErrorMessage, QrScanScreen, type QrScanTexts } from '@/modules/access-control';
+import { STRINGS } from '@/shared/lib';
 
-import { VehicleLookupScreen } from '@/modules/access-control';
+const { gate: GATE } = STRINGS;
 
-// RF-F5: escanear el QR desde Inspecciones abre directamente su inspección
+const TEXTS: QrScanTexts = {
+  title: GATE.scanTitle,
+  subtitle: STRINGS.inspections.scanHint,
+  hint: GATE.scanHint,
+  validating: GATE.validating,
+};
+
+// HSE escanea (o sube la foto de) el QR de la cita y luego elige la placa
 export function InspectionScanScreen() {
-  const router = useRouter();
+  const vm = useInspectionScan();
   return (
-    <VehicleLookupScreen
-      onFound={(vehicle) =>
-        router.replace({
-          pathname: '/inspection/[vehicleId]',
-          params: { vehicleId: vehicle.vehicleId },
-        })
-      }
-      onCancel={() => router.back()}
+    <QrScanScreen
+      roleLabel={STRINGS.session.hseRole}
+      texts={TEXTS}
+      target={{
+        kind: 'appointmentQr',
+        resolve: vm.lookup,
+        describe: gateErrorMessage,
+        notMatching: GATE.notAppointmentQr,
+      }}
+      onResolved={vm.open}
+      onCancel={vm.cancel}
     />
   );
 }

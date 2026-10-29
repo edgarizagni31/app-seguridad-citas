@@ -39,8 +39,8 @@ export default function AppLayout() {
             name="inspections/scan"
             options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
           />
-          <Stack.Screen name="inspections/appointment/[appointmentId]" />
-          <Stack.Screen name="inspection/[vehicleId]" />
+          <Stack.Screen name="inspections/units" />
+          <Stack.Screen name="inspection/[unitId]" />
           <Stack.Screen
             name="inspection/wizard/[inspectionId]"
             options={{ gestureEnabled: false }}

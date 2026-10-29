@@ -22,6 +22,7 @@ export {
 } from './flow';
 export {
   answerStep,
+  definitionOf,
   OBSERVATION_MAX_LENGTH,
   photosOf,
   readyToSubmit,
@@ -29,7 +30,7 @@ export {
   setObservation,
   startInspection,
   submitInspection,
-  toSubmitRequest,
+  toExecuteRequest,
   type AnswerResult,
   type Inspection,
   type InspectionError,
@@ -39,26 +40,32 @@ export {
 export { STANDARD_DEFINITION_V1 } from './standard-definition';
 export {
   INSPECTION_OUTBOX_KIND,
+  MAX_PHOTO_BYTES,
   type CapturedPhoto,
+  type ExecuteAnswer,
+  type ExecuteInspectionRequest,
+  type ExecuteOutcome,
   type InspectionCommandError,
-  type Inspector,
-  type OpenInspectionError,
   type InspectionGateway,
   type InspectionGatewayError,
   type InspectionRepository,
+  type InspectionTarget,
   type InspectionVerdict,
+  type Inspector,
+  type OpenInspectionError,
   type PhotoStore,
   type StoredInspection,
-  type SubmitInspectionRequest,
-  type TramaAnswer,
 } from './ports';
 export {
-  buildBoard,
-  countByStatus,
-  type BoardAppointment,
-  type BoardVehicle,
-  type InspectionBoard,
-} from './board';
+  definitionFromProtocol,
+  optionFor,
+  savedAnswers,
+  type InspectionProtocol,
+  type ProtocolError,
+  type ProtocolOption,
+  type ProtocolQuestion,
+  type SavedAnswer,
+} from './protocol';
 export {
   definitionFromQuestions,
   type Question,

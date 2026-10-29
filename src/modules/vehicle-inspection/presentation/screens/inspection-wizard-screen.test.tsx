@@ -3,8 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { createChangeBus } from '@/shared/infrastructure/db';
-import { buildDemoSnapshot } from '@/shared/infrastructure/demo';
-import { createMemoryInspections } from '@/test/fakes/inspections';
+import { createMemoryInspections, TEST_TARGET } from '@/test/fakes/inspections';
 import { renderWithDeps } from '@/test/render-with-deps';
 
 import { InspectionWizardScreen } from './inspection-wizard-screen';
@@ -30,15 +29,15 @@ const inAct =
     act(() => fn(...args));
 
 async function setup() {
-  jest.useFakeTimers();
   const changes = createChangeBus();
-  const snapshot = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-05', NOW);
-  const memory = createMemoryInspections({ changes, snapshot, now: NOW });
+  const memory = createMemoryInspections({ changes, now: NOW });
   const opened = await inAct(memory.useCases.open)({
-    vehicleId: 'veh-mnp-456',
+    target: TEST_TARGET,
     inspector: { id: 'user-ana', name: 'Ana Morales' },
   });
   if (!opened.ok) throw new Error(opened.error.type);
+  // El gateway simulado usa setTimeout: los timers falsos van después de abrir
+  jest.useFakeTimers();
   jest.mocked(useRouter).mockReturnValue(router as never);
   jest.mocked(useLocalSearchParams).mockReturnValue({ inspectionId: opened.value.id });
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -61,7 +60,7 @@ describe('InspectionWizardScreen', () => {
       await screen.findByRole('heading', { name: 'Placa del vehículo - Parte delantera' }),
     ).toBeOnTheScreen();
     expect(screen.getByText('Paso 1 de 15')).toBeOnTheScreen();
-    expect(screen.getAllByText('MNP-456').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('ABC-123').length).toBeGreaterThan(0);
     expect(
       screen.getByText(
         'Si la placa no coincide, informa al supervisor y no continúes con la inspección.',

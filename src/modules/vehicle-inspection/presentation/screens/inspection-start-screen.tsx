@@ -14,6 +14,7 @@ import {
   ProgressBar,
   radius,
   Screen,
+  shadows,
   spacing,
 } from '@/shared/ui';
 
@@ -21,8 +22,8 @@ const { inspections: TEXT, inspection: INSPECTION } = STRINGS;
 
 export function InspectionStartScreen() {
   const vm = useInspectionStart();
-  const { vehicle, appointment } = vm;
-  const finished = vehicle?.status === 'inspected' || vehicle?.status === 'observed';
+  const { target } = vm;
+  const finished = vm.status === 'finished';
 
   return (
     <Screen>
@@ -31,10 +32,6 @@ export function InspectionStartScreen() {
       </View>
       {vm.loading ? (
         <ActivityIndicator color={colors.primary} style={styles.loading} />
-      ) : !vehicle || !appointment ? (
-        <View style={styles.content}>
-          <Banner tone="warning" message={TEXT.start.notFound} />
-        </View>
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content}>
@@ -46,43 +43,39 @@ export function InspectionStartScreen() {
                 aria-hidden
               />
               <View style={styles.plate}>
-                <AppText variant="code">{vehicle.plate}</AppText>
+                <AppText variant="code">{target.plate}</AppText>
               </View>
             </View>
-            <View style={styles.info}>
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <Icon name="office-building-outline" color={colors.accent} />
+                <AppText variant="heading" style={styles.flex} numberOfLines={1}>
+                  {target.clientName}
+                </AppText>
+              </View>
               <View style={styles.row}>
                 <Icon name="file-document-outline" color={colors.textMuted} />
                 <AppText color={colors.textMuted}>{INSPECTION.voucher}</AppText>
-                <AppText variant="label" style={styles.flex} numberOfLines={1}>
-                  {appointment.voucherCode}
+                <AppText variant="label" color={colors.info} style={styles.flex} numberOfLines={1}>
+                  {target.voucherCode}
                 </AppText>
               </View>
               <View style={styles.row}>
-                <Icon name="warehouse" color={colors.text} />
-                <AppText variant="heading">{appointment.clientName}</AppText>
-              </View>
-              <View style={styles.entry}>
-                <Icon name="check-circle" color={colors.success} />
-                <AppText variant="bodyStrong" color={colors.success}>
-                  {TEXT.start.entryConfirmed(vehicle.visitorsEntered)}
-                </AppText>
-              </View>
-              <View style={styles.row}>
-                <Icon name="account-outline" color={colors.textMuted} />
+                <Icon name="account-hard-hat-outline" color={colors.textMuted} />
                 <AppText color={colors.textMuted}>{TEXT.start.inspector}</AppText>
                 <AppText variant="bodyStrong" color={colors.info}>
                   {TEXT.start.inspectorName(vm.inspectorName)}
                 </AppText>
               </View>
             </View>
-            {vehicle.progress && (
+            {vm.progress && (
               <View style={styles.progress}>
-                <AppText variant="caption">
-                  {INSPECTION.stepOf(vehicle.progress.position, vehicle.progress.total)}
+                <AppText variant="caption" color={colors.primaryText}>
+                  {INSPECTION.stepOf(vm.progress.position, vm.progress.total)}
                 </AppText>
                 <ProgressBar
-                  value={vehicle.progress.percent / 100}
-                  label={INSPECTION.stepOf(vehicle.progress.position, vehicle.progress.total)}
+                  value={vm.progress.percent / 100}
+                  label={INSPECTION.stepOf(vm.progress.position, vm.progress.total)}
                 />
               </View>
             )}
@@ -97,7 +90,7 @@ export function InspectionStartScreen() {
               <Button label={TEXT.start.viewResult} size="lg" onPress={vm.viewResult} />
             ) : (
               <Button
-                label={vehicle.status === 'in_progress' ? TEXT.start.continue : TEXT.start.title}
+                label={vm.status === 'in_progress' ? TEXT.start.continue : TEXT.start.title}
                 icon="file-document-edit-outline"
                 size="lg"
                 loading={vm.opening}
@@ -127,16 +120,21 @@ const styles = StyleSheet.create({
     borderColor: colors.plateBorder,
     backgroundColor: colors.surface,
   },
-  info: { gap: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  entry: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  card: {
+    gap: spacing.md,
     padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.successTint,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   progress: { gap: spacing.xxs },
-  footer: { padding: spacing.md },
+  footer: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
 });

@@ -68,20 +68,17 @@ import {
 } from '@/shared/infrastructure/sync';
 import {
   answerInspection,
-  boardTables,
   capturePhoto,
-  cleanupStaleDrafts,
   createInspectionSyncHandler,
   discardCapture,
   finishInspection,
   inspectionHistoryFrom,
-  loadBoard,
   openInspection,
   reportMismatch,
   updateObservation,
 } from '@/modules/vehicle-inspection/application';
-import { STANDARD_DEFINITION_V1 } from '@/modules/vehicle-inspection/domain';
 import {
+  createCitasInspectionGateway,
   createExpoPhotoStore,
   createMockInspectionGateway,
   createSqliteInspectionRepository,
@@ -164,7 +161,10 @@ export function createContainer(env: Env): AppContainer {
     createId: Crypto.randomUUID,
   });
   const photoStore = createExpoPhotoStore({ createId: Crypto.randomUUID });
-  const inspectionGateway = createMockInspectionGateway({ isOnline: connectivity.isOnline });
+  const inspectionGateway =
+    env.authProvider === 'mock'
+      ? createMockInspectionGateway({ isOnline: connectivity.isOnline })
+      : createCitasInspectionGateway(citasHttp);
 
   const notifications = createExpoNotificationsService({
     logger,
@@ -218,9 +218,8 @@ export function createContainer(env: Env): AppContainer {
   const inspectionDeps = {
     repo: inspectionRepo,
     photos: photoStore,
-    shift: shiftStore,
-    entries: entryLogFrom(entryRepo),
-    definition: STANDARD_DEFINITION_V1,
+    gateway: inspectionGateway,
+    isOnline: connectivity.isOnline,
     clock,
     createId: Crypto.randomUUID,
     requestSync: sync.requestSync,
@@ -249,7 +248,6 @@ export function createContainer(env: Env): AppContainer {
     if (!result.ok) return result;
     try {
       if (previous && previous.date !== result.value.date) await clearShiftData();
-      await cleanupStaleDrafts(inspectionDeps)(result.value);
     } catch (error) {
       logger.error('No se pudo aplicar la retención del turno', { error: String(error) });
     }
@@ -279,8 +277,7 @@ export function createContainer(env: Env): AppContainer {
     notifications,
     history: mergeHistory([entryHistoryFrom(entryRepo), inspectionHistoryFrom(inspectionRepo)]),
     inspections: {
-      board: loadBoard(inspectionDeps),
-      boardTables: boardTables(inspectionDeps),
+      list: inspectionRepo.list,
       get: inspectionRepo.findById,
       tables: inspectionRepo.tables,
       open: openInspection(inspectionDeps),

@@ -22,8 +22,8 @@ import type {
   Answer,
   CapturedPhoto,
   Inspection,
-  InspectionBoard,
   InspectionCommandError,
+  InspectionTarget,
   Inspector,
   OpenInspectionError,
   StoredInspection,
@@ -104,12 +104,12 @@ type InspectionCommand<A extends unknown[]> = (
 ) => Promise<Result<Inspection, InspectionCommandError>>;
 
 export type InspectionUseCases = {
-  readonly board: () => Promise<Result<InspectionBoard, { readonly type: 'no-shift' }>>;
-  readonly boardTables: readonly string[];
+  // Inspecciones guardadas en el teléfono (en curso, pendientes de envío y enviadas)
+  readonly list: () => Promise<StoredInspection[]>;
   readonly get: (id: string) => Promise<StoredInspection | null>;
   readonly tables: readonly string[];
   readonly open: (input: {
-    readonly vehicleId: string;
+    readonly target: InspectionTarget;
     readonly inspector: Inspector;
   }) => Promise<Result<StoredInspection, OpenInspectionError>>;
   readonly answer: InspectionCommand<

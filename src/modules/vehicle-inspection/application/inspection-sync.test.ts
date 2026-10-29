@@ -1,160 +1,111 @@
 import {
   INSPECTION_OUTBOX_KIND,
+  startInspection,
+  toExecuteRequest,
+  type ExecuteInspectionRequest,
+  type InspectionGateway,
   type PhotoRef,
-  type StoredInspection,
-  type SubmitInspectionRequest,
 } from '../domain';
+import { buildDemoProtocol } from '../infrastructure/demo-protocol';
 import { err, ok, type OutboxItem } from '@/shared/domain';
-import { createFakePhotoStore, createMemoryInspectionRepository } from '@/test/fakes/inspections';
+import {
+  createFakePhotoStore,
+  createMemoryInspectionRepository,
+  TEST_TARGET,
+} from '@/test/fakes/inspections';
 
 import { createInspectionSyncHandler, inspectionHistoryFrom, statusOf } from './inspection-sync';
 
-const photo = (id: string) => ({ id, hash: `hash-${id}` }) as PhotoRef;
+const NOW = new Date('2026-10-29T15:00:00Z');
+const local = { id: 'ph-1', uri: 'file:///a.jpg', hash: 'h1', takenAt: 't' } as PhotoRef;
+const remote = { id: 'ph-2', uri: 'https://s3/b.jpg', remoteUrl: 'https://s3/b.jpg' } as PhotoRef;
 
-const REQUEST: SubmitInspectionRequest = {
+const REQUEST: ExecuteInspectionRequest = {
   inspectionId: 'insp-1',
-  definitionVersion: 'v1',
-  vehicleId: 'veh-mnp-456',
-  appointmentId: 'apt-dollarcity',
-  plate: 'MNP-456',
-  inspectorId: 'user-ana',
-  startedAt: '2026-10-05T17:00:00.000Z',
-  finishedAt: '2026-10-05T17:10:00.000Z',
-  result: 'COMPLETED',
-  observation: '',
-  answers: [],
-  photos: [
-    { stepId: 'front-photo', photo: photo('a') },
-    { stepId: 'cabin-photo', photo: photo('b') },
-    { stepId: 'waybill-photo', photo: photo('c') },
+  protocolId: 'p-1',
+  voucherId: 'voucher-1',
+  unitId: 'vtu-1',
+  plate: 'ABC-123',
+  observation: null,
+  answers: [
+    { questionId: 'q1', status: 'ANSWERED', optionId: 'o1', photo: null },
+    { questionId: 'q2', status: 'ANSWERED', optionId: null, photo: local },
+    { questionId: 'q3', status: 'ANSWERED', optionId: null, photo: remote },
   ],
 };
 
-const item: OutboxItem = {
+const item = (payload: ExecuteInspectionRequest = REQUEST): OutboxItem => ({
   id: 'out-1',
   kind: INSPECTION_OUTBOX_KIND,
-  aggregateId: 'insp-1',
-  payload: REQUEST,
+  aggregateId: payload.inspectionId,
+  payload,
   attempts: 0,
-  createdAt: '2026-10-05T17:10:00.000Z',
-};
+  createdAt: NOW.toISOString(),
+});
 
-const stored = (overrides: Partial<StoredInspection> = {}) =>
-  ({
-    id: 'insp-1',
-    vehicleId: 'veh-mnp-456',
-    plate: 'MNP-456',
-    clientName: 'DOLLAR CITY',
-    state: 'submitted',
-    updatedAt: '2026-10-05T17:10:00.000Z',
-    finishedAt: '2026-10-05T17:10:00.000Z',
-    syncStatus: 'pending',
-    syncMessage: null,
-    uploadedPhotos: 0,
-    ...overrides,
-  }) as StoredInspection;
-
-function setup(uploadedPhotos = 0) {
-  const repo = createMemoryInspectionRepository([stored({ uploadedPhotos })]);
+function setup(execute: InspectionGateway['execute']) {
+  const repo = createMemoryInspectionRepository();
   const photos = createFakePhotoStore();
-  const gateway = {
-    uploadPhoto: jest.fn(async () => ok(undefined)),
-    submit: jest.fn(async () => ok({ type: 'accepted' as const })),
-  };
-  return { repo, photos, gateway, handler: createInspectionSyncHandler({ gateway, repo, photos }) };
+  const gateway = { getProtocol: jest.fn(), execute: jest.fn(execute) };
+  const handler = createInspectionSyncHandler({ gateway, repo, photos });
+  return { repo, photos, gateway, handler };
 }
 
 describe('createInspectionSyncHandler', () => {
-  it('sube cada foto, registra la inspección y borra las fotos locales', async () => {
-    const { handler, gateway, repo, photos } = setup();
-
-    expect(await handler.send(item)).toEqual(ok({ type: 'done' }));
-
-    expect(gateway.uploadPhoto).toHaveBeenCalledTimes(3);
-    expect(repo.setUploadedPhotos).toHaveBeenLastCalledWith('insp-1', 3);
-    const { photos: _, ...body } = REQUEST;
-    expect(gateway.submit).toHaveBeenCalledWith(body, 'insp-1');
-    expect(repo.markSynced).toHaveBeenCalledWith('insp-1');
-    expect(photos.deleteAll).toHaveBeenCalledWith('insp-1');
-  });
-
-  it('retoma la subida desde la última foto confirmada', async () => {
-    const { handler, gateway } = setup(2);
-
-    await handler.send(item);
-
-    expect(gateway.uploadPhoto).toHaveBeenCalledTimes(1);
-    expect(gateway.uploadPhoto).toHaveBeenCalledWith(
-      expect.objectContaining({ stepId: 'waybill-photo' }),
+  it('envía las fotos nuevas en base64 (no las ya subidas), guarda el veredicto y borra las fotos', async () => {
+    const { handler, gateway, repo, photos } = setup(async () =>
+      ok({ type: 'accepted', compliant: false, nonCompliant: ['Precinto: No'] }),
     );
+
+    const outcome = await handler.send(item());
+
+    expect(photos.readBase64).toHaveBeenCalledTimes(1);
+    expect(gateway.execute).toHaveBeenCalledWith(REQUEST, { 'ph-1': 'base64-ph-1' });
+    expect(repo.markSynced).toHaveBeenCalledWith('insp-1', {
+      compliant: false,
+      nonCompliant: ['Precinto: No'],
+    });
+    expect(photos.deleteAll).toHaveBeenCalledWith('insp-1');
+    expect(outcome).toEqual(ok({ type: 'done' }));
   });
 
-  it('si se corta la red a mitad, guarda el avance y se reintenta', async () => {
-    const { handler, gateway, repo } = setup();
-    gateway.uploadPhoto
-      .mockResolvedValueOnce(ok(undefined))
-      .mockResolvedValueOnce(err({ type: 'network' }) as never);
+  it('sin red o con error del servidor se reintenta después', async () => {
+    const { handler, repo } = setup(async () => err({ type: 'network' as const }));
 
-    expect(await handler.send(item)).toEqual(err({ type: 'retryable', cause: 'network' }));
-    expect(repo.setUploadedPhotos).toHaveBeenCalledWith('insp-1', 1);
-    expect(gateway.submit).not.toHaveBeenCalled();
+    expect(await handler.send(item())).toEqual(err({ type: 'retryable', cause: 'network' }));
+    expect(repo.markSynced).not.toHaveBeenCalled();
   });
 
-  it('un rechazo del servidor marca la inspección para atención', async () => {
-    const { handler, gateway, repo, photos } = setup(3);
-    gateway.submit.mockResolvedValueOnce(
+  it('un rechazo del servidor va a «Requiere atención» con su mensaje', async () => {
+    const { handler, repo } = setup(async () =>
+      ok({ type: 'rejected' as const, message: 'La foto supera el tamaño máximo.' }),
+    );
+
+    const outcome = await handler.send(item());
+    expect(outcome).toEqual(
       ok({
         type: 'rejected',
-        reason: 'InspectionClosed',
-        message: 'Ya fue inspeccionado.',
-      }) as never,
+        reason: 'INSPECTION_REJECTED',
+        message: 'La foto supera el tamaño máximo.',
+      }),
     );
-
-    expect(await handler.send(item)).toEqual(
-      ok({ type: 'rejected', reason: 'InspectionClosed', message: 'Ya fue inspeccionado.' }),
-    );
-    await handler.onRejected?.(item, {
+    await handler.onRejected?.(item(), {
       type: 'rejected',
-      reason: 'InspectionClosed',
-      message: 'Ya fue inspeccionado.',
+      reason: 'INSPECTION_REJECTED',
+      message: 'La foto supera el tamaño máximo.',
     });
-    expect(repo.markRejected).toHaveBeenCalledWith('insp-1', 'Ya fue inspeccionado.');
-    expect(photos.deleteAll).not.toHaveBeenCalled();
-    expect(handler.describe(item)).toEqual({ title: 'Inspección MNP-456' });
+    await handler.onRejected?.(item(), { type: 'rejected', reason: 'INSPECTION_REJECTED' });
+
+    expect(repo.markRejected).toHaveBeenCalledWith('insp-1', 'La foto supera el tamaño máximo.');
+    expect(repo.markRejected).toHaveBeenLastCalledWith('insp-1', 'INSPECTION_REJECTED');
   });
 
-  it('si el registro falla por red es reintentable', async () => {
-    const { handler, gateway } = setup(3);
-    gateway.submit.mockResolvedValueOnce(err({ type: 'network' }) as never);
+  it('se titula con la placa y al reenviarlo desde soporte vuelve a pendiente', async () => {
+    const { handler, repo } = setup(async () =>
+      ok({ type: 'accepted', compliant: true, nonCompliant: [] }),
+    );
 
-    expect(await handler.send(item)).toEqual(err({ type: 'retryable', cause: 'network' }));
-  });
-});
-
-describe('createInspectionSyncHandler · casos límite', () => {
-  it('sin registro local sube todas las fotos desde el principio', async () => {
-    const repo = createMemoryInspectionRepository();
-    const gateway = {
-      uploadPhoto: jest.fn(async () => ok(undefined)),
-      submit: jest.fn(async () => ok({ type: 'accepted' as const })),
-    };
-    const handler = createInspectionSyncHandler({ gateway, repo, photos: createFakePhotoStore() });
-
-    expect(await handler.send(item)).toEqual(ok({ type: 'done' }));
-    expect(gateway.uploadPhoto).toHaveBeenCalledTimes(3);
-  });
-
-  it('un rechazo sin mensaje guarda el código del motivo', async () => {
-    const { handler, repo } = setup();
-
-    await handler.onRejected?.(item, { type: 'rejected', reason: 'InspectionClosed' });
-
-    expect(repo.markRejected).toHaveBeenCalledWith('insp-1', 'InspectionClosed');
-  });
-
-  it('al reenviarlo desde soporte vuelve a pendiente', async () => {
-    const { handler, repo } = setup();
-
+    expect(handler.describe(item())).toEqual({ title: 'Inspección ABC-123' });
     await handler.onRequeued?.('insp-1');
 
     expect(repo.markPending).toHaveBeenCalledWith('insp-1');
@@ -162,7 +113,7 @@ describe('createInspectionSyncHandler · casos límite', () => {
 });
 
 describe('statusOf / inspectionHistoryFrom', () => {
-  it('traduce el estado local al estado de la lista HSE', () => {
+  it('traduce el estado de la inspección', () => {
     expect(statusOf(null)).toBeNull();
     expect(statusOf({ state: 'draft' })).toBe('in_progress');
     expect(statusOf({ state: 'submitted' })).toBe('inspected');
@@ -170,30 +121,42 @@ describe('statusOf / inspectionHistoryFrom', () => {
   });
 
   it('el historial muestra solo las inspecciones cerradas', async () => {
+    const draft = startInspection(
+      { ...TEST_TARGET, id: 'insp-1', inspectorId: 'u', inspectorName: 'Ana' },
+      buildDemoProtocol(),
+      NOW,
+    );
     const repo = createMemoryInspectionRepository([
-      stored(),
-      stored({ id: 'insp-2', state: 'observed', syncStatus: 'synced' }),
-      stored({ id: 'insp-3', state: 'draft' }),
-      stored({ id: 'insp-4', vehicleId: 'veh-2', finishedAt: null, syncStatus: null }),
+      { ...draft, syncStatus: null, syncMessage: null, verdict: null },
+      {
+        ...draft,
+        id: 'insp-2',
+        state: 'observed',
+        finishedAt: NOW.toISOString(),
+        syncStatus: 'synced',
+        syncMessage: null,
+        verdict: null,
+      },
+      {
+        ...draft,
+        id: 'insp-3',
+        state: 'submitted',
+        syncStatus: null,
+        syncMessage: null,
+        verdict: null,
+      },
     ]);
 
-    expect(await inspectionHistoryFrom(repo).list()).toEqual([
+    const history = await inspectionHistoryFrom(repo).list();
+
+    expect(history).toEqual([
+      expect.objectContaining({ id: 'insp-2', title: 'ABC-123', syncStatus: 'synced' }),
       expect.objectContaining({
-        id: 'insp-1',
-        subtitle: 'Inspeccionado · DOLLAR CITY',
+        id: 'insp-3',
         syncStatus: 'pending',
-      }),
-      expect.objectContaining({
-        id: 'insp-2',
-        subtitle: 'Observada · DOLLAR CITY',
-        syncStatus: 'synced',
-      }),
-      // Sin fecha de cierre ni estado de envío, usa la última actualización y queda pendiente
-      expect.objectContaining({
-        id: 'insp-4',
-        occurredAt: '2026-10-05T17:10:00.000Z',
-        syncStatus: 'pending',
+        occurredAt: NOW.toISOString(),
       }),
     ]);
+    expect(toExecuteRequest(draft).plate).toBe('ABC-123');
   });
 });

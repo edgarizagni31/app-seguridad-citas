@@ -1,10 +1,10 @@
 import {
   INSPECTION_OUTBOX_KIND,
+  type ExecuteInspectionRequest,
   type InspectionGateway,
   type InspectionRepository,
   type PhotoStore,
   type StoredInspection,
-  type SubmitInspectionRequest,
 } from '../domain';
 import {
   err,
@@ -15,36 +15,39 @@ import {
 } from '@/shared/domain';
 import { STRINGS } from '@/shared/lib';
 
+// Las fotos nuevas se leen recién al enviar: nunca viven en base64 dentro del estado
+async function readPhotos(photos: PhotoStore, request: ExecuteInspectionRequest) {
+  const contents: Record<string, string> = {};
+  for (const answer of request.answers) {
+    const { photo } = answer;
+    if (photo && !photo.remoteUrl) contents[photo.id] = await photos.readBase64(photo);
+  }
+  return contents;
+}
+
 export function createInspectionSyncHandler(deps: {
   readonly gateway: InspectionGateway;
   readonly repo: InspectionRepository;
   readonly photos: PhotoStore;
 }): OutboxHandler {
-  const requestOf = (payload: unknown) => payload as SubmitInspectionRequest;
+  const requestOf = (payload: unknown) => payload as ExecuteInspectionRequest;
 
   return {
     kind: INSPECTION_OUTBOX_KIND,
     async send(item) {
-      const { photos, ...request } = requestOf(item.payload);
-      const stored = await deps.repo.findById(request.inspectionId);
-      // Retoma la subida donde quedó: el servidor es idempotente por hash
-      const start = stored?.uploadedPhotos ?? 0;
-      for (const [offset, pending] of photos.slice(start).entries()) {
-        const uploaded = await deps.gateway.uploadPhoto({
-          inspectionId: request.inspectionId,
-          stepId: pending.stepId,
-          photo: pending.photo,
-        });
-        if (!uploaded.ok) return err({ type: 'retryable', cause: uploaded.error.type });
-        await deps.repo.setUploadedPhotos(request.inspectionId, start + offset + 1);
-      }
-
-      const result = await deps.gateway.submit(request, item.aggregateId);
+      const request = requestOf(item.payload);
+      const contents = await readPhotos(deps.photos, request);
+      const result = await deps.gateway.execute(request, contents);
       if (!result.ok) return err({ type: 'retryable', cause: result.error.type });
       if (result.value.type === 'rejected') {
-        return ok({ type: 'rejected', reason: result.value.reason, message: result.value.message });
+        return ok({
+          type: 'rejected',
+          reason: 'INSPECTION_REJECTED',
+          message: result.value.message,
+        });
       }
-      await deps.repo.markSynced(request.inspectionId);
+      const { compliant, nonCompliant } = result.value;
+      await deps.repo.markSynced(request.inspectionId, { compliant, nonCompliant });
       // RF-I2: con el servidor de acuerdo, las fotos ya no se guardan en el teléfono
       await deps.photos.deleteAll(request.inspectionId);
       return ok({ type: 'done' });

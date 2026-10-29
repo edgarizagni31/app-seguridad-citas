@@ -473,8 +473,14 @@ describe('GateConfirmedScreen', () => {
 
     await user.press(screen.getByRole('button', { name: 'Ir a inspección (opcional)' }));
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/inspection/[vehicleId]',
-      params: { vehicleId: 'tu-1' },
+      pathname: '/inspection/[unitId]',
+      params: {
+        unitId: 'vtu-1',
+        voucherId: 'voucher-1',
+        plate: 'ABC-123',
+        clientName: 'DELOSI',
+        voucherCode: 'APPASP0000000000000093',
+      },
     });
     expect(store().session).toBeNull();
   });

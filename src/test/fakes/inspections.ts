@@ -4,33 +4,42 @@ import {
   capturePhoto,
   discardCapture,
   finishInspection,
-  loadBoard,
   openInspection,
   reportMismatch,
   updateObservation,
 } from '@/modules/vehicle-inspection/application';
-import { STANDARD_DEFINITION_V1 } from '@/modules/vehicle-inspection/domain';
-import type { LocalEntry, ShiftSnapshot } from '@/shared/domain';
+import { createMockInspectionGateway } from '@/modules/vehicle-inspection/infrastructure';
 import type { ChangeBus } from '@/shared/infrastructure/db';
 
 import { createFixedClock } from './fixed-clock';
 import { silentLogger } from './test-dependencies';
 
 import type {
+  ExecuteInspectionRequest,
   Inspection,
+  InspectionGateway,
   InspectionRepository,
+  InspectionTarget,
+  InspectionVerdict,
   PhotoRef,
   PhotoStore,
   StoredInspection,
-  SubmitInspectionRequest,
 } from '@/modules/vehicle-inspection/domain';
+
+export const TEST_TARGET: InspectionTarget = {
+  voucherId: 'voucher-1',
+  unitId: 'vtu-1',
+  voucherCode: 'APPASP0000000000000093',
+  clientName: 'DELOSI',
+  plate: 'ABC-123',
+};
 
 export function createMemoryInspectionRepository(initial: StoredInspection[] = []) {
   const rows = new Map(initial.map((inspection) => [inspection.id, inspection]));
   const stored = (inspection: Inspection): StoredInspection => ({
     syncStatus: null,
     syncMessage: null,
-    uploadedPhotos: 0,
+    verdict: null,
     ...rows.get(inspection.id),
     ...inspection,
   });
@@ -40,23 +49,24 @@ export function createMemoryInspectionRepository(initial: StoredInspection[] = [
   };
 
   return {
-    tables: ['inspections'],
+    tables: ['unit_inspections'],
     save: jest.fn(async (inspection: Inspection) => {
       rows.set(inspection.id, stored(inspection));
     }),
     findById: jest.fn(async (id: string) => rows.get(id) ?? null),
-    findByVehicle: jest.fn(
-      async (vehicleId: string) =>
-        [...rows.values()].find((inspection) => inspection.vehicleId === vehicleId) ?? null,
+    findByUnit: jest.fn(
+      async (voucherId: string, unitId: string) =>
+        [...rows.values()].find(
+          (inspection) => inspection.voucherId === voucherId && inspection.unitId === unitId,
+        ) ?? null,
     ),
     list: jest.fn(async () => [...rows.values()]),
-    saveFinished: jest.fn(async (inspection: Inspection, _request: SubmitInspectionRequest) => {
-      rows.set(inspection.id, { ...stored(inspection), syncStatus: 'pending', uploadedPhotos: 0 });
+    saveFinished: jest.fn(async (inspection: Inspection, _request: ExecuteInspectionRequest) => {
+      rows.set(inspection.id, { ...stored(inspection), syncStatus: 'pending', verdict: null });
     }),
-    setUploadedPhotos: jest.fn(async (id: string, uploadedPhotos: number) =>
-      update(id, { uploadedPhotos }),
+    markSynced: jest.fn(async (id: string, verdict: InspectionVerdict) =>
+      update(id, { syncStatus: 'synced', verdict }),
     ),
-    markSynced: jest.fn(async (id: string) => update(id, { syncStatus: 'synced' })),
     markRejected: jest.fn(async (id: string, syncMessage: string) =>
       update(id, { syncStatus: 'rejected', syncMessage }),
     ),
@@ -86,27 +96,28 @@ export function createFakePhotoStore() {
       };
       return photo;
     }),
+    readBase64: jest.fn(async (photo: PhotoRef) => `base64-${photo.id}`),
     delete: jest.fn(async () => undefined),
     deleteAll: jest.fn(async () => undefined),
     discardCapture: jest.fn(async () => undefined),
   } satisfies PhotoStore;
 }
 
-// Casos de uso reales sobre memoria, para probar pantallas de punta a punta
+// Casos de uso reales sobre memoria y el protocolo de la demo, para probar pantallas de punta a punta
 export function createMemoryInspections({
   changes,
-  snapshot,
-  entries = [],
+  online = true,
+  gateway,
   now = new Date('2026-10-05T17:00:00Z'),
 }: {
   changes: ChangeBus;
-  snapshot: ShiftSnapshot | null;
-  entries?: LocalEntry[];
+  online?: boolean;
+  gateway?: InspectionGateway;
   now?: Date;
 }) {
   const repo = createMemoryInspectionRepository();
-  const notify = () => changes.emit(['inspections']);
-  for (const method of ['save', 'saveFinished', 'markSynced', 'setUploadedPhotos'] as const) {
+  const notify = () => changes.emit(['unit_inspections']);
+  for (const method of ['save', 'saveFinished', 'markSynced'] as const) {
     const original = repo[method].getMockImplementation();
     repo[method].mockImplementation((async (...args: never[]) => {
       await (original as (...a: never[]) => Promise<void>)(...args);
@@ -117,19 +128,17 @@ export function createMemoryInspections({
   const deps = {
     repo,
     photos: createFakePhotoStore(),
-    shift: { current: async () => snapshot },
-    entries: { tables: [], list: async () => entries },
-    definition: STANDARD_DEFINITION_V1,
+    gateway: gateway ?? createMockInspectionGateway({ isOnline: async () => online, latencyMs: 0 }),
+    isOnline: async () => online,
     clock: createFixedClock(now.toISOString()),
     createId: () => `insp-${(ids += 1)}`,
     requestSync: jest.fn(async () => undefined),
     logger: silentLogger,
   };
   const useCases: InspectionUseCases = {
-    board: jest.fn(loadBoard(deps)),
-    boardTables: ['inspections'],
+    list: repo.list,
     get: repo.findById,
-    tables: ['inspections'],
+    tables: ['unit_inspections'],
     open: jest.fn(openInspection(deps)),
     answer: jest.fn(answerInspection(deps)),
     capturePhoto: jest.fn(capturePhoto(deps)),

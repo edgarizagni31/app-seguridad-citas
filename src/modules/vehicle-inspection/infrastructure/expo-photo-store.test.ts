@@ -132,4 +132,14 @@ describe('createExpoPhotoStore', () => {
       'file:///docs/inspections/insp-1',
     ]);
   });
+
+  it('no intenta borrar una foto que ya estaba en el servidor', async () => {
+    await store.delete({ uri: 'https://s3/a.jpg', remoteUrl: 'https://s3/a.jpg' } as never);
+
+    expect(mockFs.deleted).toEqual([]);
+  });
+
+  it('lee la foto en base64 para enviarla', async () => {
+    expect(await store.readBase64({ uri: 'file:///docs/a.jpg' } as never)).toBe('anBlZw==');
+  });
 });

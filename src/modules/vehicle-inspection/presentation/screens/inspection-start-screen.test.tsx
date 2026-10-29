@@ -3,9 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useSessionStore } from '@/modules/auth';
 import { createChangeBus } from '@/shared/infrastructure/db';
-import { buildDemoSnapshot } from '@/shared/infrastructure/demo';
 import { buildSession, buildSessionUser } from '@/test/factories/auth';
-import { createMemoryInspections } from '@/test/fakes/inspections';
+import { createMemoryInspections, TEST_TARGET } from '@/test/fakes/inspections';
 import { renderWithDeps } from '@/test/render-with-deps';
 
 import { InspectionStartScreen } from './inspection-start-screen';
@@ -14,14 +13,21 @@ jest.mock('expo-router', () => ({ useRouter: jest.fn(), useLocalSearchParams: je
 
 const NOW = new Date('2026-10-05T17:00:00Z');
 const router = { replace: jest.fn(), back: jest.fn() };
+const INSPECTOR = { id: 'user-ana', name: 'Ana Morales' };
 
-async function setup(vehicleId: string) {
+async function setup({
+  online = true,
+  prepare,
+}: {
+  online?: boolean;
+  prepare?: (memory: ReturnType<typeof createMemoryInspections>) => Promise<unknown>;
+} = {}) {
   jest.mocked(useRouter).mockReturnValue(router as never);
-  jest.mocked(useLocalSearchParams).mockReturnValue({ vehicleId });
+  jest.mocked(useLocalSearchParams).mockReturnValue({ ...TEST_TARGET });
   useSessionStore.getState().setSession(
     buildSession({
       user: buildSessionUser({
-        id: 'user-ana',
+        id: INSPECTOR.id,
         firstName: 'Ana',
         lastName: 'Morales',
         roles: ['PACCESO_AHSE'],
@@ -29,32 +35,37 @@ async function setup(vehicleId: string) {
     }),
   );
   const changes = createChangeBus();
-  const snapshot = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-05', NOW);
-  const memory = createMemoryInspections({ changes, snapshot, now: NOW });
+  const memory = createMemoryInspections({ changes, online, now: NOW });
+  await prepare?.(memory);
   const user = userEvent.setup();
   await renderWithDeps(<InspectionStartScreen />, { changes, inspections: memory.useCases });
   return { user, memory };
 }
 
-describe('InspectionStartScreen', () => {
-  it('muestra el vehículo, el voucher, el ingreso y el inspector', async () => {
-    await setup('veh-mnp-456');
+const openDraft = async (memory: ReturnType<typeof createMemoryInspections>) => {
+  const opened = await memory.useCases.open({ target: TEST_TARGET, inspector: INSPECTOR });
+  if (!opened.ok) throw new Error(opened.error.type);
+  return opened.value.id;
+};
 
-    expect(await screen.findByText('MNP-456')).toBeOnTheScreen();
-    expect(screen.getByText('APPASP0000000000000094')).toBeOnTheScreen();
-    expect(screen.getByText('DOLLAR CITY')).toBeOnTheScreen();
-    expect(screen.getByText('Ingreso confirmado - 1 visitante')).toBeOnTheScreen();
+describe('InspectionStartScreen', () => {
+  it('muestra la placa, el cliente, el voucher y el inspector', async () => {
+    await setup();
+
+    expect(await screen.findByText('ABC-123')).toBeOnTheScreen();
+    expect(screen.getByText('DELOSI')).toBeOnTheScreen();
+    expect(screen.getByText('APPASP0000000000000093')).toBeOnTheScreen();
     expect(screen.getByText('Ana Morales - HSE')).toBeOnTheScreen();
   });
 
-  it('iniciar crea el borrador y abre el cuestionario', async () => {
-    const { user, memory } = await setup('veh-mnp-456');
+  it('iniciar descarga el protocolo, crea el borrador y abre el cuestionario', async () => {
+    const { user, memory } = await setup();
 
     await user.press(await screen.findByRole('button', { name: 'Iniciar inspección' }));
 
     expect(memory.useCases.open).toHaveBeenCalledWith({
-      vehicleId: 'veh-mnp-456',
-      inspector: { id: 'user-ana', name: 'Ana Morales' },
+      target: TEST_TARGET,
+      inspector: INSPECTOR,
     });
     expect(router.replace).toHaveBeenCalledWith({
       pathname: '/inspection/wizard/[inspectionId]',
@@ -62,20 +73,37 @@ describe('InspectionStartScreen', () => {
     });
   });
 
-  it('un vehículo sin ingreso no aparece para inspeccionar', async () => {
-    await setup('veh-abc-123');
+  it('sin red no puede empezar una inspección nueva', async () => {
+    const { user } = await setup({ online: false });
+
+    await user.press(await screen.findByRole('button', { name: 'Iniciar inspección' }));
 
     expect(
       await screen.findByText(
-        'El vehículo no está en los datos del día. Actualízalos desde Mi perfil.',
+        'Sin conexión. Para empezar una inspección nueva hay que descargar el cuestionario: conéctate e inténtalo de nuevo.',
       ),
     ).toBeOnTheScreen();
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('un borrador del teléfono se continúa con su avance', async () => {
+    await setup({ prepare: openDraft });
+
+    expect(await screen.findByRole('button', { name: 'Continuar inspección' })).toBeOnTheScreen();
+    expect(screen.getByText('Paso 1 de 15')).toBeOnTheScreen();
   });
 
   it('con una inspección cerrada ofrece ver el resultado', async () => {
-    await setup('veh-jkl-101');
+    const { user } = await setup({
+      prepare: async (memory) => memory.useCases.reportMismatch(await openDraft(memory)),
+    });
 
-    expect(await screen.findByRole('button', { name: 'Ver resultado' })).toBeOnTheScreen();
+    await user.press(await screen.findByRole('button', { name: 'Ver resultado' }));
+
     expect(screen.getByText('La inspección de este vehículo ya se cerró.')).toBeOnTheScreen();
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/inspection/result/[inspectionId]',
+      params: { inspectionId: 'insp-1' },
+    });
   });
 });

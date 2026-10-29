@@ -10,10 +10,11 @@ import {
   OBSERVATION_MAX_LENGTH,
   previousStep,
   progress,
-  STANDARD_DEFINITION_V1,
+  definitionOf,
   visibleSteps,
   type Answer,
   type Answers,
+  type InspectionDefinition,
   type StepDefinition,
 } from '../../domain';
 import { useDependencies } from '@/core/di';
@@ -21,7 +22,7 @@ import { STRINGS } from '@/shared/lib';
 import { useLiveData } from '@/shared/ui';
 
 const { inspection: TEXT } = STRINGS;
-const DEFINITION = STANDARD_DEFINITION_V1;
+const EMPTY: InspectionDefinition = { version: '', steps: [] };
 export const REVIEW = 'review';
 const ADVANCE_MS = 400;
 // Con el aviso "Se omitirá la fotografía…" se deja un poco más de tiempo para leerlo
@@ -36,13 +37,18 @@ const confirm = (title: string, message: string, action: string) =>
   });
 
 // Aviso de la trama ("Se omitirá la fotografía de…") del paso que deja de aplicar con esta respuesta
-const skippedMessageFor = (answers: Answers, step: StepDefinition, answer: Answer) => {
-  const before = new Set(visibleSteps(DEFINITION, answers).map((item) => item.id));
+const skippedMessageFor = (
+  definition: InspectionDefinition,
+  answers: Answers,
+  step: StepDefinition,
+  answer: Answer,
+) => {
+  const before = new Set(visibleSteps(definition, answers).map((item) => item.id));
   const after = new Set(
-    visibleSteps(DEFINITION, { ...answers, [step.id]: answer }).map((item) => item.id),
+    visibleSteps(definition, { ...answers, [step.id]: answer }).map((item) => item.id),
   );
   return (
-    DEFINITION.steps.find(
+    definition.steps.find(
       (item) => before.has(item.id) && !after.has(item.id) && item.skippedMessage,
     )?.skippedMessage ?? null
   );
@@ -76,16 +82,18 @@ export function useInspectionWizard() {
     [],
   );
 
+  // Cada inspección trae su protocolo: la definición sale de él
+  const definition = inspection ? definitionOf(inspection) : EMPTY;
   const answers: Answers = inspection?.answers ?? {};
   // Sin paso elegido se retoma en el primero sin responder (RF-G9)
   const stepId =
-    selectedStep ?? (inspection ? (currentStep(DEFINITION, answers)?.id ?? REVIEW) : null);
-  const step = DEFINITION.steps.find((candidate) => candidate.id === stepId) ?? null;
+    selectedStep ?? (inspection ? (currentStep(definition, answers)?.id ?? REVIEW) : null);
+  const step = definition.steps.find((candidate) => candidate.id === stepId) ?? null;
 
   const goAfter = (from: string, updated: Answers) => {
     const next = fromReview
-      ? currentStep(DEFINITION, updated)
-      : nextStep(DEFINITION, updated, from);
+      ? currentStep(definition, updated)
+      : nextStep(definition, updated, from);
     if (!next) setFromReview(false);
     setSelectedStep(next?.id ?? REVIEW);
     setError(null);
@@ -109,7 +117,7 @@ export function useInspectionWizard() {
     const previous = answers[step.id];
     if (previous?.kind === 'yes_no' && previous.value === value) return goAfter(step.id, answers);
 
-    const lost = invalidatedBy(DEFINITION, answers, step.id, answer);
+    const lost = invalidatedBy(definition, answers, step.id, answer);
     if (
       lost.length > 0 &&
       !(await confirm(TEXT.changeAnswerTitle, TEXT.changeAnswerMessage, TEXT.changeAnswerConfirm))
@@ -120,7 +128,7 @@ export function useInspectionWizard() {
     if (!updated) return;
     void Haptics.selectionAsync().catch(() => undefined);
     // RF-G1c: avance automático, con el aviso de la foto omitida si respondió No
-    const omitted = skippedMessageFor(answers, step, answer);
+    const omitted = skippedMessageFor(definition, answers, step, answer);
     setAdvancing({ value, omitted });
     timer.current = setTimeout(
       () => {
@@ -168,10 +176,10 @@ export function useInspectionWizard() {
     if (timer.current) clearTimeout(timer.current);
     setAdvancing(null);
     if (stepId === REVIEW) {
-      const visible = visibleSteps(DEFINITION, answers);
+      const visible = visibleSteps(definition, answers);
       return setSelectedStep(visible.at(-1)?.id ?? null);
     }
-    const previous = step ? previousStep(DEFINITION, answers, step.id) : null;
+    const previous = step ? previousStep(definition, answers, step.id) : null;
     if (previous) return setSelectedStep(previous.id);
     router.back();
   };
@@ -205,8 +213,8 @@ export function useInspectionWizard() {
     stepId,
     step,
     answer: step ? (answers[step.id] ?? null) : null,
-    progress: step ? progress(DEFINITION, answers, step.id) : null,
-    reviewSteps: visibleSteps(DEFINITION, answers),
+    progress: step ? progress(definition, answers, step.id) : null,
+    reviewSteps: visibleSteps(definition, answers),
     answers,
     advancing,
     busy,

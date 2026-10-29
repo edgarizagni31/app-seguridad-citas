@@ -1,7 +1,13 @@
 import type { Answer, Answers, PhotoRef } from './answers';
 import type { InspectionDefinition } from './definition';
 import { currentStep, isComplete, pruneAnswers, visibleSteps } from './flow';
-import type { SubmitInspectionRequest, TramaAnswer } from './ports';
+import type { ExecuteAnswer, ExecuteInspectionRequest } from './ports';
+import {
+  definitionFromProtocol,
+  optionFor,
+  savedAnswers,
+  type InspectionProtocol,
+} from './protocol';
 import { err, ok, type Result } from '@/shared/domain';
 
 export const OBSERVATION_MAX_LENGTH = 500;
@@ -9,11 +15,13 @@ export const OBSERVATION_MAX_LENGTH = 500;
 // draft: en curso · submitted: enviada (o en cola) · observed: placa no coincide
 export type InspectionState = 'draft' | 'submitted' | 'observed';
 
+// Una inspección por unidad de la cita (VoucherId + VoucherTransportUnitId)
 export type Inspection = {
   readonly id: string;
-  readonly definitionVersion: string;
-  readonly vehicleId: string;
-  readonly appointmentId: string;
+  // El protocolo descargado viaja con la inspección: se puede retomar y enviar sin red
+  readonly protocol: InspectionProtocol;
+  readonly voucherId: string;
+  readonly unitId: string;
   readonly voucherCode: string;
   readonly clientName: string;
   readonly plate: string;
@@ -38,8 +46,8 @@ export type InspectionError =
 export type StartInspection = Pick<
   Inspection,
   | 'id'
-  | 'vehicleId'
-  | 'appointmentId'
+  | 'voucherId'
+  | 'unitId'
   | 'voucherCode'
   | 'clientName'
   | 'plate'
@@ -47,20 +55,27 @@ export type StartInspection = Pick<
   | 'inspectorName'
 >;
 
+// Lo ya guardado en el servidor se precarga al empezar
 export const startInspection = (
   data: StartInspection,
-  definition: InspectionDefinition,
+  protocol: InspectionProtocol,
   now: Date,
 ): Inspection => ({
   ...data,
-  definitionVersion: definition.version,
+  protocol,
   state: 'draft',
-  answers: {},
+  answers: savedAnswers(protocol),
   observation: '',
   startedAt: now.toISOString(),
   updatedAt: now.toISOString(),
   finishedAt: null,
 });
+
+// El protocolo se validó al abrir la inspección; si no, queda sin pasos
+export function definitionOf(inspection: Pick<Inspection, 'protocol'>): InspectionDefinition {
+  const result = definitionFromProtocol(inspection.protocol);
+  return result.ok ? result.value : { version: inspection.protocol.protocolId, steps: [] };
+}
 
 export type AnswerResult = {
   readonly inspection: Inspection;
@@ -68,14 +83,16 @@ export type AnswerResult = {
   readonly discardedPhotos: readonly PhotoRef[];
 };
 
+const isLocal = (photo: PhotoRef) => !photo.remoteUrl;
+
 export function answerStep(
   inspection: Inspection,
-  definition: InspectionDefinition,
   stepId: string,
   answer: Answer,
   now: Date,
 ): Result<AnswerResult, InspectionError> {
   if (inspection.state !== 'draft') return err({ type: 'not-editable' });
+  const definition = definitionOf(inspection);
   const step = definition.steps.find((candidate) => candidate.id === stepId);
   if (!step) return err({ type: 'unknown-step', stepId });
   if (step.kind !== answer.kind) return err({ type: 'wrong-answer-kind', stepId });
@@ -96,7 +113,7 @@ export function answerStep(
   const discardedPhotos = [
     ...replaced,
     ...removed.flatMap(({ answer: lost }) => (lost.kind === 'photo' ? [lost.photo] : [])),
-  ];
+  ].filter(isLocal);
   return ok({
     inspection: { ...inspection, answers, updatedAt: now.toISOString() },
     discardedPhotos,
@@ -114,11 +131,10 @@ export function setObservation(
 
 export function submitInspection(
   inspection: Inspection,
-  definition: InspectionDefinition,
   now: Date,
 ): Result<Inspection, InspectionError> {
   if (inspection.state !== 'draft') return err({ type: 'not-editable' });
-  const missing = currentStep(definition, inspection.answers);
+  const missing = currentStep(definitionOf(inspection), inspection.answers);
   if (missing) return err({ type: 'incomplete', missingStepId: missing.id });
   const at = now.toISOString();
   return ok({ ...inspection, state: 'submitted', updatedAt: at, finishedAt: at });
@@ -139,72 +155,53 @@ export const photosOf = (inspection: Pick<Inspection, 'answers'>): PhotoRef[] =>
     answer.kind === 'photo' ? [answer.photo] : [],
   );
 
-export const readyToSubmit = (inspection: Inspection, definition: InspectionDefinition) =>
-  inspection.state === 'draft' && isComplete(definition, inspection.answers);
+export const readyToSubmit = (inspection: Inspection) =>
+  inspection.state === 'draft' && isComplete(definitionOf(inspection), inspection.answers);
 
-function toTramaValue(answer: Answer): TramaAnswer['value'] {
-  if (answer.kind === 'yes_no') return answer.value;
-  if (answer.kind === 'plate') return { plateMatches: answer.confirmed };
-  const { photo } = answer;
-  return {
-    photo: {
-      hash: photo.hash,
-      takenAt: photo.takenAt,
-      width: photo.width,
-      height: photo.height,
-      sizeKb: Math.round(photo.bytes / 1024),
-    },
-  };
-}
-
-// Todas las preguntas de la versión viajan siempre, cada una con su estado (trama)
-export function toSubmitRequest(
-  inspection: Inspection,
-  definition: InspectionDefinition,
-): SubmitInspectionRequest {
+// Respuestas visibles contestadas; las ocultas viajan como SKIPPED (ExecuteInspectionProtocol)
+export function toExecuteRequest(inspection: Inspection): ExecuteInspectionRequest {
+  const definition = definitionOf(inspection);
   const visible = new Set(visibleSteps(definition, inspection.answers).map((step) => step.id));
+  const questionByCode = new Map(inspection.protocol.questions.map((q) => [q.code, q]));
   const observed = inspection.state === 'observed';
-  const answers = definition.steps.map((step): TramaAnswer => {
+
+  const answers = definition.steps.flatMap((step): ExecuteAnswer[] => {
+    const question = questionByCode.get(step.id);
+    if (!question) return [];
     const answer = inspection.answers[step.id];
-    const base = { questionId: step.questionId, code: step.id };
     if (answer) {
-      return {
-        ...base,
-        status: 'ANSWERED',
-        value: toTramaValue(answer),
-        answeredAt: answer.answeredAt ?? null,
-      };
+      return [
+        {
+          questionId: question.id,
+          status: 'ANSWERED',
+          optionId: optionFor(question, answer),
+          photo: answer.kind === 'photo' ? answer.photo : null,
+        },
+      ];
     }
-    // La placa que no coincide se registra como respuesta de la pregunta 1
     if (observed && step.kind === 'plate') {
-      return {
-        ...base,
-        status: 'ANSWERED',
-        value: { plateMatches: false },
-        answeredAt: inspection.finishedAt,
-      };
+      return [
+        {
+          questionId: question.id,
+          status: 'ANSWERED',
+          optionId: optionFor(question, 'plate-mismatch'),
+          photo: null,
+        },
+      ];
     }
-    return {
-      ...base,
-      status: visible.has(step.id) ? 'PENDING' : 'SKIPPED',
-      value: null,
-      answeredAt: null,
-    };
+    if (!visible.has(step.id)) {
+      return [{ questionId: question.id, status: 'SKIPPED', optionId: null, photo: null }];
+    }
+    return [];
   });
+
   return {
     inspectionId: inspection.id,
-    definitionVersion: inspection.definitionVersion,
-    vehicleId: inspection.vehicleId,
-    appointmentId: inspection.appointmentId,
+    protocolId: inspection.protocol.protocolId,
+    voucherId: inspection.voucherId,
+    unitId: inspection.unitId,
     plate: inspection.plate,
-    inspectorId: inspection.inspectorId,
-    startedAt: inspection.startedAt,
-    finishedAt: inspection.finishedAt ?? inspection.updatedAt,
-    result: observed ? 'OBSERVED' : 'COMPLETED',
-    observation: inspection.observation.trim(),
+    observation: inspection.observation.trim() || null,
     answers,
-    photos: Object.entries(inspection.answers).flatMap(([stepId, answer]) =>
-      answer.kind === 'photo' ? [{ stepId, photo: answer.photo }] : [],
-    ),
   };
 }

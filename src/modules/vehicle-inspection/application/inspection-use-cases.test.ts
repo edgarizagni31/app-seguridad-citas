@@ -1,14 +1,18 @@
-import { STANDARD_DEFINITION_V1, type StoredInspection } from '../domain';
-import { err, type LocalEntry, type ShiftSnapshot } from '@/shared/domain';
-import { buildDemoSnapshot } from '@/shared/infrastructure/demo';
+import type { InspectionGateway } from '../domain';
+import { buildDemoProtocol } from '../infrastructure/demo-protocol';
+import { createMockInspectionGateway } from '../infrastructure/mock-inspection-gateway';
+import { err, ok } from '@/shared/domain';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
-import { createFakePhotoStore, createMemoryInspectionRepository } from '@/test/fakes/inspections';
+import {
+  createFakePhotoStore,
+  createMemoryInspectionRepository,
+  TEST_TARGET,
+} from '@/test/fakes/inspections';
 import { silentLogger } from '@/test/fakes/test-dependencies';
 
 import {
   answerInspection,
   capturePhoto,
-  cleanupStaleDrafts,
   discardCapture,
   finishInspection,
   openInspection,
@@ -16,325 +20,203 @@ import {
   updateObservation,
 } from './inspection-use-cases';
 
-const NOW = new Date('2026-10-05T17:00:00Z');
-const SNAPSHOT = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-05', NOW);
 const INSPECTOR = { id: 'user-ana', name: 'Ana Morales' };
 const CAPTURE = { uri: 'file:///cache/camera.jpg', width: 4000, height: 3000 };
 
-function setup({
-  snapshot = SNAPSHOT as ShiftSnapshot | null,
-  entries = [] as LocalEntry[],
-  repo = createMemoryInspectionRepository(),
-} = {}) {
-  let ids = 0;
+function setup({ online = true, gateway }: { online?: boolean; gateway?: InspectionGateway } = {}) {
+  const repo = createMemoryInspectionRepository();
+  const photos = createFakePhotoStore();
   const deps = {
     repo,
-    photos: createFakePhotoStore(),
-    shift: { current: async () => snapshot },
-    entries: { tables: [], list: async () => entries },
-    definition: STANDARD_DEFINITION_V1,
-    clock: createFixedClock(NOW.toISOString()),
-    createId: () => `insp-${(ids += 1)}`,
+    photos,
+    gateway: gateway ?? createMockInspectionGateway({ isOnline: async () => online, latencyMs: 0 }),
+    isOnline: async () => online,
+    clock: createFixedClock('2026-10-29T15:00:00.000Z'),
+    createId: () => 'insp-1',
     requestSync: jest.fn(async () => undefined),
     logger: silentLogger,
   };
-  return {
-    deps,
-    open: openInspection(deps),
-    answer: answerInspection(deps),
-    capture: capturePhoto(deps),
-    observe: updateObservation(deps),
-    finish: finishInspection(deps),
-    mismatch: reportMismatch(deps),
-  };
-}
-
-async function opened(context: ReturnType<typeof setup>) {
-  const result = await context.open({ vehicleId: 'veh-mnp-456', inspector: INSPECTOR });
-  if (!result.ok) throw new Error(result.error.type);
-  return result.value;
+  const open = () => openInspection(deps)({ target: TEST_TARGET, inspector: INSPECTOR });
+  return { deps, repo, photos, open };
 }
 
 describe('openInspection', () => {
-  it('crea el borrador de un vehículo con ingreso confirmado', async () => {
-    const context = setup();
+  it('descarga el protocolo y empieza un borrador por voucher + unidad', async () => {
+    const { open, repo } = setup();
 
-    const inspection = await opened(context);
+    const result = await open();
 
-    expect(inspection).toMatchObject({
-      id: 'insp-1',
-      plate: 'MNP-456',
-      clientName: 'DOLLAR CITY',
-      inspectorName: 'Ana Morales',
-      state: 'draft',
-    });
-    expect(context.deps.repo.save).toHaveBeenCalled();
-  });
-
-  it('retoma el borrador existente en vez de crear otro (RF-G9)', async () => {
-    const context = setup();
-    const first = await opened(context);
-
-    expect((await opened(context)).id).toBe(first.id);
-    expect(context.deps.repo.save).toHaveBeenCalledTimes(1);
-  });
-
-  it('un vehículo sin ingreso no se puede inspeccionar (RF-F2)', async () => {
-    const { open } = setup();
-
-    expect(await open({ vehicleId: 'veh-abc-123', inspector: INSPECTOR })).toEqual(
-      err({ type: 'not-entered' }),
-    );
-  });
-
-  it('un ingreso confirmado en este dispositivo habilita la inspección', async () => {
-    const { open } = setup({
-      entries: [{ vehicleId: 'veh-abc-123', enteredAt: NOW.toISOString(), visitorIds: [] }],
-    });
-
-    expect(await open({ vehicleId: 'veh-abc-123', inspector: INSPECTOR })).toMatchObject({
+    expect(result).toMatchObject({
       ok: true,
+      value: {
+        id: 'insp-1',
+        voucherId: 'voucher-1',
+        unitId: 'vtu-1',
+        plate: 'ABC-123',
+        inspectorName: 'Ana Morales',
+        state: 'draft',
+        syncStatus: null,
+        verdict: null,
+      },
     });
+    expect(result.ok && result.value.protocol.questions).toHaveLength(15);
+    expect(repo.save).toHaveBeenCalledTimes(1);
   });
 
-  it('sin paquete del día o con un vehículo desconocido', async () => {
-    expect(await setup({ snapshot: null }).open({ vehicleId: 'x', inspector: INSPECTOR })).toEqual(
-      err({ type: 'no-shift' }),
+  it('retoma el borrador local sin pedir nada al servidor (funciona sin red)', async () => {
+    const online = setup();
+    await online.open();
+    const getProtocol = jest.fn();
+    const offline = {
+      ...online.deps,
+      isOnline: async () => false,
+      gateway: { getProtocol, execute: jest.fn() },
+    };
+
+    const result = await openInspection(offline)({ target: TEST_TARGET, inspector: INSPECTOR });
+
+    expect(result.ok && result.value.id).toBe('insp-1');
+    expect(getProtocol).not.toHaveBeenCalled();
+  });
+
+  it('una inspección nueva necesita red para descargar el protocolo', async () => {
+    expect(await setup({ online: false }).open()).toEqual(err({ type: 'offline' }));
+  });
+
+  it('propaga el error del servidor o un protocolo vacío o inválido', async () => {
+    const failing = {
+      getProtocol: jest.fn(async () => err({ type: 'server' as const })),
+      execute: jest.fn(),
+    };
+    const empty = {
+      getProtocol: jest.fn(async () => ok({ ...buildDemoProtocol(), questions: [] })),
+      execute: jest.fn(),
+    };
+    const invalid = {
+      getProtocol: jest.fn(async () =>
+        ok({
+          ...buildDemoProtocol(),
+          questions: [{ ...buildDemoProtocol().questions[0]!, kind: 'SIGNATURE' }],
+        }),
+      ),
+      execute: jest.fn(),
+    };
+
+    expect(await setup({ gateway: failing }).open()).toEqual(err({ type: 'server' }));
+    expect(await setup({ gateway: empty }).open()).toEqual(err({ type: 'no-protocol' }));
+    expect(await setup({ gateway: invalid }).open()).toMatchObject(
+      err({ type: 'invalid-protocol' }),
     );
-    expect(await setup().open({ vehicleId: 'nope', inspector: INSPECTOR })).toEqual(
-      err({ type: 'vehicle-not-found' }),
-    );
+  });
+
+  it('si no puede guardar, informa el problema de almacenamiento', async () => {
+    const { open, repo } = setup();
+    repo.save.mockRejectedValueOnce(new Error('disco lleno'));
+
+    expect(await open()).toEqual(err({ type: 'storage' }));
   });
 });
 
-describe('respuestas y fotos', () => {
-  it('cambiar Sí por No borra del dispositivo la foto que dejó de aplicar', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    await context.answer(id, 'has-trailer', { kind: 'yes_no', value: true });
-    const withPhoto = await context.capture(id, 'trailer-photo', CAPTURE);
-    expect(withPhoto.ok && withPhoto.value.answers['trailer-photo']).toMatchObject({
-      kind: 'photo',
+describe('responder, fotos y cierre', () => {
+  it('guarda respuestas y borra la foto que deja de aplicar', async () => {
+    const { deps, open, photos } = setup();
+    await open();
+    await answerInspection(deps)('insp-1', 'has-trailer', { kind: 'yes_no', value: true });
+    await capturePhoto(deps)('insp-1', 'trailer-photo', CAPTURE);
+
+    const result = await answerInspection(deps)('insp-1', 'has-trailer', {
+      kind: 'yes_no',
+      value: false,
     });
 
-    const changed = await context.answer(id, 'has-trailer', { kind: 'yes_no', value: false });
-
-    expect(changed.ok && changed.value.answers['trailer-photo']).toBeUndefined();
-    expect(context.deps.photos.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'photo-1' }),
-    );
+    expect(result.ok && result.value.answers['trailer-photo']).toBeUndefined();
+    expect(photos.delete).toHaveBeenCalledWith(expect.objectContaining({ id: 'photo-1' }));
   });
 
-  it('la foto se guarda con el paso y la hora de captura', async () => {
-    const context = setup();
-    const { id } = await opened(context);
+  it('una respuesta inválida, una inspección inexistente o un fallo al guardar no rompen', async () => {
+    const { deps, open, repo, photos } = setup();
+    await open();
 
-    await context.capture(id, 'front-photo', CAPTURE);
-
-    expect(context.deps.photos.save).toHaveBeenCalledWith({
-      inspectionId: id,
-      stepId: 'front-photo',
-      capture: CAPTURE,
-      takenAt: NOW,
-    });
+    expect(
+      await answerInspection(deps)('nope', 'has-trailer', { kind: 'yes_no', value: true }),
+    ).toEqual(err({ type: 'not-found' }));
+    expect(
+      await answerInspection(deps)('insp-1', 'front-photo', { kind: 'yes_no', value: true }),
+    ).toEqual(err({ type: 'wrong-answer-kind', stepId: 'front-photo' }));
+    repo.save.mockRejectedValueOnce(new Error('disco lleno'));
+    expect(
+      await answerInspection(deps)('insp-1', 'has-trailer', { kind: 'yes_no', value: true }),
+    ).toEqual(err({ type: 'storage' }));
+    photos.delete.mockRejectedValueOnce(new Error('no existe'));
+    await answerInspection(deps)('insp-1', 'has-trailer', { kind: 'yes_no', value: true });
+    await capturePhoto(deps)('insp-1', 'trailer-photo', CAPTURE);
+    expect(
+      (await answerInspection(deps)('insp-1', 'has-trailer', { kind: 'yes_no', value: false })).ok,
+    ).toBe(true);
   });
 
-  it('si la foto no se puede guardar, la respuesta no cambia', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    context.deps.photos.save.mockRejectedValueOnce(new Error('sin espacio'));
-
-    expect(await context.capture(id, 'front-photo', CAPTURE)).toEqual(
+  it('la foto que no se pudo guardar o asociar no queda en el teléfono', async () => {
+    const { deps, open, photos } = setup();
+    await open();
+    photos.save.mockRejectedValueOnce(new Error('cámara'));
+    expect(await capturePhoto(deps)('insp-1', 'front-photo', CAPTURE)).toEqual(
       err({ type: 'photo-failed' }),
     );
-  });
 
-  it('una foto para un paso oculto se descarta del dispositivo', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    await context.answer(id, 'has-trailer', { kind: 'yes_no', value: false });
-
-    const result = await context.capture(id, 'trailer-photo', CAPTURE);
-
-    expect(result).toEqual(err({ type: 'hidden-step', stepId: 'trailer-photo' }));
-    expect(context.deps.photos.delete).toHaveBeenCalled();
-  });
-
-  it('una inspección inexistente', async () => {
-    const context = setup();
-
-    expect(await context.answer('nope', 'has-trailer', { kind: 'yes_no', value: true })).toEqual(
-      err({ type: 'not-found' }),
-    );
-    expect(await context.capture('nope', 'front-photo', CAPTURE)).toEqual(
+    // Paso oculto: se guarda la foto, se rechaza la respuesta y se borra
+    await answerInspection(deps)('insp-1', 'has-trailer', { kind: 'yes_no', value: false });
+    const hidden = await capturePhoto(deps)('insp-1', 'trailer-photo', CAPTURE);
+    expect(hidden).toEqual(err({ type: 'hidden-step', stepId: 'trailer-photo' }));
+    expect(photos.delete).toHaveBeenCalled();
+    expect(await capturePhoto(deps)('nope', 'front-photo', CAPTURE)).toEqual(
       err({ type: 'not-found' }),
     );
   });
 
-  it('guarda la observación opcional', async () => {
-    const context = setup();
-    const { id } = await opened(context);
+  it('descarta la captura de la vista previa aunque falle el borrado', async () => {
+    const { deps, photos } = setup();
+    photos.discardCapture.mockRejectedValueOnce(new Error('no existe'));
 
-    expect(await context.observe(id, 'Sin novedades')).toMatchObject({
-      ok: true,
-      value: { observation: 'Sin novedades' },
-    });
-  });
-});
-
-describe('cierre', () => {
-  async function answerAllNo(context: ReturnType<typeof setup>, id: string) {
-    await context.answer(id, 'front-plate', { kind: 'plate', confirmed: true });
-    await context.capture(id, 'front-photo', CAPTURE);
-    for (const stepId of [
-      'has-trailer',
-      'has-rear-left-seal',
-      'has-rear-right-seal',
-      'has-side-door',
-      'has-side-seal',
-    ]) {
-      await context.answer(id, stepId, { kind: 'yes_no', value: false });
-    }
-    await context.capture(id, 'cabin-photo', CAPTURE);
-    await context.answer(id, 'has-waybill', { kind: 'yes_no', value: false });
-  }
-
-  it('enviar encola la inspección completa y pide sincronizar', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    await answerAllNo(context, id);
-
-    const result = await context.finish(id);
-
-    expect(result).toMatchObject({ ok: true, value: { state: 'submitted' } });
-    const [, request] = context.deps.repo.saveFinished.mock.calls[0] ?? [];
-    expect(request).toMatchObject({ result: 'COMPLETED', inspectionId: id });
-    expect(request?.photos).toHaveLength(2);
-    expect(context.deps.requestSync).toHaveBeenCalled();
+    await expect(discardCapture(deps)(CAPTURE)).resolves.toBeUndefined();
   });
 
-  it('no se envía incompleta', async () => {
-    const context = setup();
-    const { id } = await opened(context);
+  it('la observación se guarda y valida su largo', async () => {
+    const { deps, open, repo } = setup();
+    await open();
 
-    expect(await context.finish(id)).toEqual(
+    expect((await updateObservation(deps)('insp-1', 'Sin novedad')).ok).toBe(true);
+    expect(await updateObservation(deps)('insp-1', 'x'.repeat(501))).toEqual(
+      err({ type: 'observation-too-long' }),
+    );
+    expect(await updateObservation(deps)('nope', 'x')).toEqual(err({ type: 'not-found' }));
+    repo.save.mockRejectedValueOnce(new Error('disco lleno'));
+    expect(await updateObservation(deps)('insp-1', 'x')).toEqual(err({ type: 'storage' }));
+  });
+
+  it('cerrar incompleta falla; la placa que no coincide encola el envío y lo dispara', async () => {
+    const { deps, open, repo } = setup();
+    await open();
+
+    expect(await finishInspection(deps)('insp-1')).toEqual(
       err({ type: 'incomplete', missingStepId: 'front-plate' }),
     );
-    expect(context.deps.repo.saveFinished).not.toHaveBeenCalled();
-  });
+    const observed = await reportMismatch(deps)('insp-1');
 
-  it('la placa que no coincide se registra como observada', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-
-    expect(await context.mismatch(id)).toMatchObject({ ok: true, value: { state: 'observed' } });
-    const [, request] = context.deps.repo.saveFinished.mock.calls[0] ?? [];
-    expect(request).toMatchObject({ result: 'OBSERVED' });
-  });
-
-  it('si no se puede guardar el cierre, informa error de almacenamiento', async () => {
-    const repo = createMemoryInspectionRepository();
-    const context = setup({ repo });
-    const { id } = await opened(context);
-    repo.saveFinished.mockRejectedValueOnce(new Error('db'));
-
-    expect(await context.mismatch(id)).toEqual(err({ type: 'storage' }));
-    expect(context.deps.requestSync).not.toHaveBeenCalled();
-  });
-
-  it('una inspección ya cerrada no se vuelve a abrir como borrador', async () => {
-    const closed = {
-      id: 'insp-9',
-      vehicleId: 'veh-mnp-456',
-      state: 'submitted',
-    } as StoredInspection;
-    const context = setup({ repo: createMemoryInspectionRepository([closed]) });
-
-    expect(await context.open({ vehicleId: 'veh-mnp-456', inspector: INSPECTOR })).toMatchObject({
-      ok: true,
-      value: { id: 'insp-9', state: 'submitted' },
-    });
-  });
-});
-
-describe('cleanupStaleDrafts', () => {
-  it('borra los borradores y sus fotos de vehículos que ya no están en el paquete', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    const cleanup = cleanupStaleDrafts(context.deps);
-
-    await cleanup(SNAPSHOT);
-    expect(context.deps.repo.delete).not.toHaveBeenCalled();
-
-    await cleanup({ appointments: [] });
-    expect(context.deps.photos.deleteAll).toHaveBeenCalledWith(id);
-    expect(context.deps.repo.delete).toHaveBeenCalledWith(id);
-  });
-});
-
-describe('borrado de fotos', () => {
-  it('si no se puede borrar una foto descartada, la respuesta igual se guarda', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    await context.answer(id, 'has-trailer', { kind: 'yes_no', value: true });
-    await context.capture(id, 'trailer-photo', CAPTURE);
-    context.deps.photos.delete.mockRejectedValueOnce(new Error('bloqueada'));
-
-    const result = await context.answer(id, 'has-trailer', { kind: 'yes_no', value: false });
-
-    expect(result.ok).toBe(true);
-  });
-
-  it('una captura descartada en la vista previa se borra sin romper el flujo', async () => {
-    const context = setup();
-    const discard = discardCapture(context.deps);
-
-    await discard(CAPTURE);
-    context.deps.photos.discardCapture.mockRejectedValueOnce(new Error('no existe'));
-    await expect(discard(CAPTURE)).resolves.toBeUndefined();
-
-    expect(context.deps.photos.discardCapture).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('errores de almacenamiento y estados no editables', () => {
-  it('si no se puede crear el borrador informa error de almacenamiento', async () => {
-    const repo = createMemoryInspectionRepository();
-    repo.save.mockRejectedValueOnce(new Error('db'));
-
-    expect(await setup({ repo }).open({ vehicleId: 'veh-mnp-456', inspector: INSPECTOR })).toEqual(
-      err({ type: 'storage' }),
+    expect(observed.ok && observed.value.state).toBe('observed');
+    expect(repo.saveFinished).toHaveBeenCalledWith(
+      expect.objectContaining({ state: 'observed' }),
+      expect.objectContaining({ voucherId: 'voucher-1', unitId: 'vtu-1', plate: 'ABC-123' }),
     );
+    expect(deps.requestSync).toHaveBeenCalled();
+    expect(await reportMismatch(deps)('nope')).toEqual(err({ type: 'not-found' }));
   });
 
-  it('si no se puede guardar una respuesta o la observación', async () => {
-    const repo = createMemoryInspectionRepository();
-    const context = setup({ repo });
-    const { id } = await opened(context);
-    repo.save.mockRejectedValueOnce(new Error('db')).mockRejectedValueOnce(new Error('db'));
+  it('si no puede guardar el cierre, no lo encola', async () => {
+    const { deps, open, repo } = setup();
+    await open();
+    repo.saveFinished.mockRejectedValueOnce(new Error('disco lleno'));
 
-    expect(await context.answer(id, 'has-trailer', { kind: 'yes_no', value: true })).toEqual(
-      err({ type: 'storage' }),
-    );
-    expect(await context.observe(id, 'Nota')).toEqual(err({ type: 'storage' }));
-  });
-
-  it('una inspección cerrada no acepta fotos ni observaciones', async () => {
-    const context = setup();
-    const { id } = await opened(context);
-    await context.mismatch(id);
-
-    expect(await context.capture(id, 'front-photo', CAPTURE)).toEqual(
-      err({ type: 'not-editable' }),
-    );
-    expect(await context.observe(id, 'Nota')).toEqual(err({ type: 'not-editable' }));
-    expect(context.deps.photos.save).not.toHaveBeenCalled();
-  });
-
-  it('observación o cierre de una inspección inexistente', async () => {
-    const context = setup();
-
-    expect(await context.observe('nope', 'Nota')).toEqual(err({ type: 'not-found' }));
-    expect(await context.finish('nope')).toEqual(err({ type: 'not-found' }));
+    expect(await reportMismatch(deps)('insp-1')).toEqual(err({ type: 'storage' }));
+    expect(deps.requestSync).not.toHaveBeenCalled();
   });
 });

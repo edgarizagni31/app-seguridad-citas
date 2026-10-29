@@ -7,6 +7,8 @@ export type PhotoRef = {
   readonly height: number;
   readonly bytes: number;
   readonly hash: string;
+  // Ya está en el servidor (inspección retomada): se reenvía su URL, no la foto
+  readonly remoteUrl?: string;
 };
 
 // answeredAt lo pone el agregado al guardar la respuesta

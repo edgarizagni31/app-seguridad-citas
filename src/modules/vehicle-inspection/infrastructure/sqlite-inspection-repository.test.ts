@@ -1,26 +1,27 @@
-import { startInspection, STANDARD_DEFINITION_V1, toSubmitRequest } from '../domain';
+import { startInspection, toExecuteRequest } from '../domain';
 import { createChangeBus, runMigrations } from '@/shared/infrastructure/db';
 import { SYNC_MIGRATIONS } from '@/shared/infrastructure/sync';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
 import { createTestDatabase } from '@/test/sqljs-database';
 
+import { buildDemoProtocol } from './demo-protocol';
 import { INSPECTION_MIGRATIONS } from './inspection-migrations';
 import { createSqliteInspectionRepository } from './sqlite-inspection-repository';
 
 const NOW = new Date('2026-10-05T17:00:00Z');
-const draft = (id = 'insp-1', vehicleId = 'veh-mnp-456') =>
+const draft = (id = 'insp-1', unitId = 'vtu-1') =>
   startInspection(
     {
       id,
-      vehicleId,
-      appointmentId: 'apt-dollarcity',
+      voucherId: 'voucher-1',
+      unitId,
       voucherCode: 'APPASP0000000000000094',
       clientName: 'DOLLAR CITY',
       plate: 'MNP-456',
       inspectorId: 'user-ana',
       inspectorName: 'Ana Morales',
     },
-    STANDARD_DEFINITION_V1,
+    buildDemoProtocol(),
     NOW,
   );
 
@@ -29,7 +30,7 @@ async function setup() {
   await runMigrations(db, [...SYNC_MIGRATIONS, ...INSPECTION_MIGRATIONS]);
   const changes = createChangeBus();
   const onChange = jest.fn();
-  changes.subscribe(['inspections'], onChange);
+  changes.subscribe(['unit_inspections'], onChange);
   let ids = 0;
   const repo = createSqliteInspectionRepository({
     db,
@@ -41,23 +42,22 @@ async function setup() {
 }
 
 describe('createSqliteInspectionRepository', () => {
-  it('guarda el borrador y lo encuentra por id o por vehículo', async () => {
+  it('guarda el borrador con su protocolo y lo encuentra por id o por voucher + unidad', async () => {
     const { repo, onChange } = await setup();
 
     await repo.save(draft());
     await repo.save({ ...draft(), observation: 'Actualizado' });
 
-    expect(await repo.findById('insp-1')).toMatchObject({
-      observation: 'Actualizado',
-      syncStatus: null,
-      uploadedPhotos: 0,
-    });
-    expect((await repo.findByVehicle('veh-mnp-456'))?.id).toBe('insp-1');
+    const stored = await repo.findById('insp-1');
+    expect(stored).toMatchObject({ observation: 'Actualizado', syncStatus: null, verdict: null });
+    expect(stored?.protocol.questions).toHaveLength(15);
+    expect((await repo.findByUnit('voucher-1', 'vtu-1'))?.id).toBe('insp-1');
+    expect(await repo.findByUnit('voucher-1', 'otra')).toBeNull();
     expect(await repo.findById('nope')).toBeNull();
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
-  it('una sola inspección por vehículo', async () => {
+  it('una sola inspección por voucher + unidad', async () => {
     const { repo } = await setup();
     await repo.save(draft('insp-1'));
 
@@ -68,7 +68,7 @@ describe('createSqliteInspectionRepository', () => {
     const { db, repo } = await setup();
     const finished = { ...draft(), state: 'observed' as const };
 
-    await repo.saveFinished(finished, toSubmitRequest(finished, STANDARD_DEFINITION_V1));
+    await repo.saveFinished(finished, toExecuteRequest(finished));
 
     expect(await repo.findById('insp-1')).toMatchObject({
       state: 'observed',
@@ -79,29 +79,22 @@ describe('createSqliteInspectionRepository', () => {
     ]);
   });
 
-  it('registra el avance de subida, el resultado y limpia lo sincronizado', async () => {
+  it('guarda el veredicto del servidor, los rechazos y limpia lo sincronizado', async () => {
     const { repo } = await setup();
-    await repo.saveFinished(
-      draft('insp-1', 'veh-1'),
-      toSubmitRequest(draft(), STANDARD_DEFINITION_V1),
-    );
-    await repo.saveFinished(
-      draft('insp-2', 'veh-2'),
-      toSubmitRequest(draft(), STANDARD_DEFINITION_V1),
-    );
+    await repo.saveFinished(draft('insp-1', 'vtu-1'), toExecuteRequest(draft()));
+    await repo.saveFinished(draft('insp-2', 'vtu-2'), toExecuteRequest(draft()));
 
-    await repo.setUploadedPhotos('insp-1', 4);
-    await repo.markSynced('insp-1');
-    await repo.markRejected('insp-2', 'Ya fue inspeccionado.');
+    await repo.markSynced('insp-1', { compliant: false, nonCompliant: ['Precinto: No'] });
+    await repo.markRejected('insp-2', 'La foto supera el tamaño máximo.');
     expect(await repo.findById('insp-1')).toMatchObject({
-      uploadedPhotos: 4,
       syncStatus: 'synced',
+      verdict: { compliant: false, nonCompliant: ['Precinto: No'] },
     });
 
     await repo.clearSynced();
 
     expect((await repo.list()).map((item) => [item.id, item.syncStatus, item.syncMessage])).toEqual(
-      [['insp-2', 'rejected', 'Ya fue inspeccionado.']],
+      [['insp-2', 'rejected', 'La foto supera el tamaño máximo.']],
     );
 
     // Soporte lo reenvía: vuelve a pendiente y sin mensaje
@@ -110,5 +103,27 @@ describe('createSqliteInspectionRepository', () => {
       syncStatus: 'pending',
       syncMessage: null,
     });
+
+    await repo.delete('insp-2');
+    expect(await repo.list()).toEqual([]);
+  });
+
+  it('la migración descarta la tabla y los envíos del paquete simulado', async () => {
+    const db = await createTestDatabase();
+    await runMigrations(db, [...SYNC_MIGRATIONS, INSPECTION_MIGRATIONS[0]!]);
+    await db.run(
+      `INSERT INTO outbox (id, kind, aggregate_id, payload, status, next_attempt_at, created_at)
+       VALUES ('o1', 'vehicle-inspection', 'old', '{}', 'pending', 'x', 'x'),
+              ('o2', 'vehicle-entry', 'e1', '{}', 'pending', 'x', 'x')`,
+    );
+
+    await runMigrations(db, [...SYNC_MIGRATIONS, ...INSPECTION_MIGRATIONS]);
+
+    expect(await db.all('SELECT id FROM outbox')).toEqual([{ id: 'o2' }]);
+    expect(
+      await db.all(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%inspections'",
+      ),
+    ).toEqual([{ name: 'unit_inspections' }]);
   });
 });

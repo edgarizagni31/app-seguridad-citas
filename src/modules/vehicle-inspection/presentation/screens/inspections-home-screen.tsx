@@ -1,205 +1,118 @@
-import { FlashList } from '@shopify/flash-list';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppointmentCard } from '../components/appointment-card';
-import { IndicatorCard } from '../components/indicator-card';
-import { useInspectionsHome, type BoardFilter } from '../view-models/use-inspections-home';
+import { InspectionStatusChip } from '../components/inspection-status-chip';
+import { useInspectionsHome } from '../view-models/use-inspections-flow';
+import { PlateBadge } from '@/modules/access-control';
 import { UserHeader } from '@/modules/auth';
 import { STRINGS } from '@/shared/lib';
-import {
-  AppText,
-  colors,
-  EmptyState,
-  Icon,
-  radius,
-  Screen,
-  sizes,
-  spacing,
-  typography,
-} from '@/shared/ui';
+import { AppText, colors, EmptyState, Icon, radius, Screen, shadows, spacing } from '@/shared/ui';
 
 const { inspections: TEXT } = STRINGS;
 
-const FILTERS: { value: BoardFilter; label: string }[] = [
-  { value: 'all', label: TEXT.all },
-  { value: 'pending', label: TEXT.pending },
-  { value: 'in_progress', label: TEXT.inProgress },
-  { value: 'inspected', label: TEXT.inspected },
-];
-
+// Inicio HSE: escanear el QR de la cita y ver las inspecciones guardadas en el teléfono
 export function InspectionsHomeScreen() {
   const vm = useInspectionsHome();
 
-  const header = (
-    <View style={styles.header}>
-      <UserHeader roleLabel={STRINGS.session.hseRole} subtitle={TEXT.welcome} />
-      <View style={styles.titles}>
-        <AppText variant="heading" role="heading">
-          {TEXT.title}
-        </AppText>
-        <View style={styles.row}>
-          <Icon name="calendar-blank-outline" size={sizes.iconSm} color={colors.textMuted} />
-          <AppText color={colors.textMuted}>{TEXT.today(vm.today)}</AppText>
-        </View>
-      </View>
-      <View style={styles.indicators}>
-        <IndicatorCard
-          label={TEXT.pending}
-          value={vm.counts.pending}
-          icon="clock-outline"
-          tone="warning"
-          selected={vm.filter === 'pending'}
-          onPress={() => vm.setFilter('pending')}
-        />
-        <IndicatorCard
-          label={TEXT.inProgress}
-          value={vm.counts.inProgress}
-          icon="progress-clock"
-          tone="info"
-          selected={vm.filter === 'in_progress'}
-          onPress={() => vm.setFilter('in_progress')}
-        />
-        <IndicatorCard
-          label={TEXT.inspected}
-          value={vm.counts.inspected}
-          icon="check-circle"
-          tone="success"
-          selected={vm.filter === 'inspected'}
-          onPress={() => vm.setFilter('inspected')}
-        />
-      </View>
-      <View style={styles.row}>
-        <View style={styles.search}>
-          <Icon name="magnify" color={colors.textMuted} />
-          <TextInput
-            value={vm.query}
-            onChangeText={vm.setQuery}
-            placeholder={TEXT.search}
-            placeholderTextColor={colors.textMuted}
-            aria-label={TEXT.search}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-        </View>
-        <Pressable
-          role="button"
-          aria-label={TEXT.scan}
-          onPress={vm.scan}
-          style={({ pressed }) => [styles.scan, pressed && styles.pressed]}
-        >
-          <Icon name="qrcode-scan" color={colors.textOnDark} />
-        </Pressable>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-        role="tablist"
-        aria-label={TEXT.filters}
-      >
-        {FILTERS.map((option) => {
-          const selected = vm.filter === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              role="tab"
-              aria-selected={selected}
-              aria-label={option.label}
-              onPress={() => vm.setFilter(option.value)}
-              style={[styles.filter, selected && styles.filterSelected]}
-            >
-              <AppText variant="label" color={selected ? colors.textOnDark : colors.text}>
-                {option.label}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-
   return (
     <Screen edges={[]}>
-      <FlashList
-        data={vm.appointments}
-        keyExtractor={(group) => group.appointment.id}
-        contentContainerStyle={styles.content}
-        ListHeaderComponent={header}
-        renderItem={({ item, index }) => (
-          <AppointmentCard
-            appointment={item.appointment}
-            vehicles={item.vehicles}
-            time={vm.time}
-            isLast={index === vm.appointments.length - 1}
-            onOpenAppointment={() => vm.openAppointment(item.appointment.id)}
-            onOpenVehicle={(vehicle) => vm.openVehicle(vehicle.id)}
+      <ScrollView contentContainerStyle={styles.content}>
+        <UserHeader roleLabel={STRINGS.session.hseRole} subtitle={TEXT.welcome} />
+        <View>
+          <AppText variant="title" role="heading">
+            {TEXT.title}
+          </AppText>
+          <AppText color={colors.textMuted}>{vm.today}</AppText>
+        </View>
+
+        <Pressable
+          role="button"
+          aria-label={TEXT.scanTitle}
+          onPress={vm.scan}
+          style={({ pressed }) => [styles.scan, pressed && styles.scanPressed]}
+        >
+          <View style={styles.scanIcon}>
+            <Icon name="qrcode-scan" color={colors.textOnDark} size={36} />
+          </View>
+          <View style={styles.flex}>
+            <AppText variant="heading" color={colors.textOnDark}>
+              {TEXT.scanTitle}
+            </AppText>
+            <AppText color={colors.textOnDark}>{TEXT.scanHint}</AppText>
+          </View>
+          <Icon name="chevron-right" color={colors.textOnDark} />
+        </Pressable>
+
+        <AppText variant="bodyStrong" role="heading">
+          {TEXT.localTitle}
+        </AppText>
+        {vm.loading && <ActivityIndicator color={colors.primary} />}
+        {!vm.loading && vm.items.length === 0 && (
+          <EmptyState
+            icon="clipboard-check-outline"
+            title={TEXT.emptyTitle}
+            message={TEXT.emptyMessage}
           />
         )}
-        ListEmptyComponent={
-          vm.loading ? (
-            <ActivityIndicator color={colors.primary} style={styles.loading} />
-          ) : (
-            <View style={styles.empty}>
-              <EmptyState
-                icon="truck-check-outline"
-                title={TEXT.emptyTitle}
-                message={vm.hasVehicles ? TEXT.noResults : TEXT.emptyMessage}
-              />
+        {vm.items.map((item) => (
+          <Pressable
+            key={item.id}
+            role="button"
+            aria-label={`${item.plate}, ${TEXT.status[item.status]}`}
+            onPress={item.open}
+            style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+          >
+            <View style={styles.info}>
+              <PlateBadge plate={item.plate} />
+              <AppText variant="bodyStrong" numberOfLines={1}>
+                {item.clientName}
+              </AppText>
+              <AppText variant="caption" color={colors.info} numberOfLines={1}>
+                {item.voucherCode}
+              </AppText>
             </View>
-          )
-        }
-      />
+            <View style={styles.trailing}>
+              <InspectionStatusChip status={item.status} />
+              <Icon name="chevron-right" color={colors.textMuted} />
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.md },
-  header: { gap: spacing.md, marginBottom: spacing.md },
-  titles: { gap: spacing.xxs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  indicators: { flexDirection: 'row', gap: spacing.xs },
-  search: {
-    flex: 1,
-    minHeight: sizes.touchTarget,
+  flex: { flex: 1 },
+  content: { padding: spacing.md, gap: spacing.md },
+  scan: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+    ...shadows.card,
   },
-  searchInput: { flex: 1, ...typography.body, color: colors.text, paddingVertical: spacing.xs },
-  scan: {
-    width: sizes.touchTarget,
-    height: sizes.touchTarget,
+  scanPressed: { backgroundColor: colors.primaryPressed },
+  scanIcon: {
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-  },
-  filters: { gap: spacing.xs },
-  filter: {
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
     borderRadius: radius.full,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  filterSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  loading: { marginTop: spacing.xl },
-  empty: { paddingVertical: spacing.xl },
-  pressed: { opacity: 0.75 },
+  pressed: { opacity: 0.85 },
+  info: { flex: 1, gap: spacing.xxs, alignItems: 'flex-start' },
+  trailing: { alignItems: 'flex-end', gap: spacing.xs },
 });

@@ -55,12 +55,22 @@ export function useGateConfirmed() {
       : [],
     rejectedMessages: outcome.rejectedCompanions.map((item) => item.message),
     home,
-    // El módulo de inspección abre la unidad por su id de unidad de transporte
-    inspect: (transportUnitId: string) => {
+    // La inspección se guarda por voucher + unidad de la cita (VoucherTransportUnitId)
+    inspect: (unitId: string) => {
+      const unit = units.find((candidate) => candidate.id === unitId);
       reset();
       router.dismissAll();
-      router.push({ pathname: '/inspection/[vehicleId]', params: { vehicleId: transportUnitId } });
+      router.push({
+        pathname: '/inspection/[unitId]',
+        params: {
+          unitId,
+          voucherId: appointment.voucherId,
+          plate: unit?.plate ?? '',
+          clientName: appointment.clientName ?? '',
+          voucherCode: appointment.code,
+        },
+      });
     },
-    inspectable: units.map((unit) => ({ id: unit.transportUnitId, plate: unit.plate })),
+    inspectable: units.map((unit) => ({ id: unit.id, plate: unit.plate })),
   };
 }

@@ -11,20 +11,17 @@ import { InspectionResultScreen } from './inspection-result-screen';
 jest.mock('expo-router', () => ({ useRouter: jest.fn(), useLocalSearchParams: jest.fn() }));
 
 const router = { dismissTo: jest.fn() };
-const photo = (stepId: string) => ({
-  kind: 'photo',
-  photo: { id: stepId, uri: `file:///${stepId}` },
-});
+const SEAL = '¿El vehículo cuenta con precinto trasero izquierdo?: No';
 
 const inspection = (overrides: Partial<StoredInspection> = {}) =>
   ({
     id: 'insp-1',
-    plate: 'MNP-456',
+    plate: 'ABC-123',
     state: 'submitted',
-    answers: { 'front-photo': photo('front-photo'), 'cabin-photo': photo('cabin-photo') },
+    answers: {},
     syncStatus: 'pending',
     syncMessage: null,
-    uploadedPhotos: 0,
+    verdict: null,
     ...overrides,
   }) as StoredInspection;
 
@@ -49,15 +46,31 @@ describe('InspectionResultScreen', () => {
     ).toBeOnTheScreen();
   });
 
-  it('con red muestra el avance de la subida de fotos', async () => {
-    await setup(inspection({ uploadedPhotos: 1 }));
+  it('con red y sin veredicto se está enviando', async () => {
+    await setup(inspection());
 
-    expect(await screen.findByText('Subiendo fotos 1 de 2')).toBeOnTheScreen();
+    expect(await screen.findByRole('heading', { name: 'Enviando inspección…' })).toBeOnTheScreen();
   });
 
-  it('enviada, observada o rechazada', async () => {
-    await setup(inspection({ syncStatus: 'synced' }));
-    expect(await screen.findByRole('heading', { name: 'Inspección enviada' })).toBeOnTheScreen();
+  it('el servidor la da por conforme', async () => {
+    await setup(
+      inspection({ syncStatus: 'synced', verdict: { compliant: true, nonCompliant: [] } }),
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Inspección conforme' })).toBeOnTheScreen();
+    expect(screen.queryByText('Controles no conformes')).not.toBeOnTheScreen();
+  });
+
+  it('no conforme lista los controles que fallaron', async () => {
+    await setup(
+      inspection({ syncStatus: 'synced', verdict: { compliant: false, nonCompliant: [SEAL] } }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Inspección no conforme' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('heading', { name: 'Controles no conformes' })).toBeOnTheScreen();
+    expect(screen.getByText(SEAL)).toBeOnTheScreen();
   });
 
   it('la placa que no coincide muestra la indicación para el supervisor', async () => {
@@ -68,10 +81,10 @@ describe('InspectionResultScreen', () => {
 
   it('un rechazo muestra el motivo del servidor y se vuelve a la lista', async () => {
     const { user } = await setup(
-      inspection({ syncStatus: 'rejected', syncMessage: 'Ya fue inspeccionado.' }),
+      inspection({ syncStatus: 'rejected', syncMessage: 'La foto supera los 500 KB.' }),
     );
 
-    expect(await screen.findByText('Ya fue inspeccionado.')).toBeOnTheScreen();
+    expect(await screen.findByText('La foto supera los 500 KB.')).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Volver a inspecciones' }));
     expect(router.dismissTo).toHaveBeenCalledWith('/inspections');
   });

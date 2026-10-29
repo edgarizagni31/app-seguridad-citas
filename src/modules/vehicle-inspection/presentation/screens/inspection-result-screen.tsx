@@ -1,18 +1,8 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { useInspectionResult, type ResultState } from '../view-models/use-inspection-result';
 import { STRINGS } from '@/shared/lib';
-import {
-  AppText,
-  Button,
-  colors,
-  Icon,
-  ProgressBar,
-  radius,
-  Screen,
-  spacing,
-  type IconName,
-} from '@/shared/ui';
+import { AppText, Button, colors, Icon, radius, Screen, spacing, type IconName } from '@/shared/ui';
 
 const { result: TEXT } = STRINGS.inspection;
 
@@ -26,13 +16,21 @@ type ResultView = {
 
 function describe(state: Exclude<ResultState, { type: 'loading' }>): ResultView {
   switch (state.type) {
-    case 'sent':
+    case 'compliant':
       return {
         icon: 'check-bold',
         color: colors.success,
         background: colors.successTint,
-        title: TEXT.sentTitle,
-        message: TEXT.sentMessage,
+        title: TEXT.compliantTitle,
+        message: TEXT.compliantMessage,
+      };
+    case 'non-compliant':
+      return {
+        icon: 'alert',
+        color: colors.danger,
+        background: colors.dangerTint,
+        title: state.observed ? TEXT.observedTitle : TEXT.nonCompliantTitle,
+        message: state.observed ? TEXT.observedMessage : TEXT.nonCompliantMessage,
       };
     case 'observed':
       return {
@@ -50,13 +48,13 @@ function describe(state: Exclude<ResultState, { type: 'loading' }>): ResultView 
         title: TEXT.rejectedTitle,
         message: state.message ?? STRINGS.common.unexpectedError,
       };
-    case 'uploading':
+    case 'sending':
       return {
         icon: 'cloud-upload-outline',
         color: colors.info,
         background: colors.infoTint,
         title: TEXT.sending,
-        message: TEXT.uploading(state.done, state.total),
+        message: TEXT.sendingMessage,
       };
     case 'pending':
       return {
@@ -82,7 +80,7 @@ export function InspectionResultScreen() {
 
   return (
     <Screen>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.icon, { backgroundColor: view.background }]}>
           <Icon name={view.icon} size={56} color={view.color} />
         </View>
@@ -95,12 +93,21 @@ export function InspectionResultScreen() {
         <AppText align="center" color={colors.textMuted}>
           {view.message}
         </AppText>
-        {vm.state.type === 'uploading' && (
-          <View style={styles.progress}>
-            <ProgressBar value={vm.state.done / vm.state.total} label={view.message} />
+        {vm.state.type === 'sending' && <ActivityIndicator color={colors.info} />}
+        {vm.state.type === 'non-compliant' && vm.state.controls.length > 0 && (
+          <View style={styles.controls}>
+            <AppText variant="bodyStrong" role="heading">
+              {TEXT.nonCompliantList}
+            </AppText>
+            {vm.state.controls.map((control) => (
+              <View key={control} style={styles.control}>
+                <Icon name="close-circle" color={colors.danger} size={20} />
+                <AppText style={styles.flex}>{control}</AppText>
+              </View>
+            ))}
           </View>
         )}
-      </View>
+      </ScrollView>
       <View style={styles.footer}>
         <Button label={TEXT.backToList} size="lg" onPress={vm.backToList} />
       </View>
@@ -109,9 +116,10 @@ export function InspectionResultScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   loading: { marginTop: spacing.xl },
   content: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
@@ -125,6 +133,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     marginBottom: spacing.sm,
   },
-  progress: { alignSelf: 'stretch', marginTop: spacing.sm },
+  controls: {
+    alignSelf: 'stretch',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.dangerTint,
+  },
+  control: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   footer: { padding: spacing.md },
 });

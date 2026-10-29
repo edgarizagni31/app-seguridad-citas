@@ -28,10 +28,10 @@ export function useEntryConfirmedViewModel() {
       resetEntryFlow();
       router.dismissTo('/');
     },
+    // Flujo anterior (QR del vehículo): sin voucher ni unidad reales, se va a escanear la cita
     inspect: () => {
-      const vehicleId = record?.vehicleId;
       resetEntryFlow();
-      if (vehicleId) router.replace({ pathname: '/inspection/[vehicleId]', params: { vehicleId } });
+      router.replace('/inspections');
     },
   };
 }

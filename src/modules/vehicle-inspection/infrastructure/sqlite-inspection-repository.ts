@@ -2,6 +2,7 @@ import {
   INSPECTION_OUTBOX_KIND,
   type Inspection,
   type InspectionRepository,
+  type InspectionVerdict,
   type StoredInspection,
 } from '../domain';
 import type { Clock, RecordSyncStatus } from '@/shared/domain';
@@ -14,25 +15,26 @@ type InspectionRow = {
   payload: string;
   sync_status: RecordSyncStatus | null;
   sync_message: string | null;
-  uploaded_photos: number;
+  verdict: string | null;
 };
 
 const toStored = (row: InspectionRow): StoredInspection => ({
   ...(JSON.parse(row.payload) as Inspection),
   syncStatus: row.sync_status,
   syncMessage: row.sync_message,
-  uploadedPhotos: row.uploaded_photos,
+  verdict: row.verdict ? (JSON.parse(row.verdict) as InspectionVerdict) : null,
 });
 
-// Una inspección por vehículo: el borrador se reemplaza en cada respuesta
-const UPSERT = `INSERT INTO inspections (id, vehicle_id, state, payload, updated_at)
-  VALUES (?, ?, ?, ?, ?)
+// Una inspección por voucher + unidad: el borrador se reemplaza en cada respuesta
+const UPSERT = `INSERT INTO unit_inspections (id, voucher_id, unit_id, state, payload, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?)
   ON CONFLICT(id) DO UPDATE SET state = excluded.state, payload = excluded.payload,
     updated_at = excluded.updated_at`;
 
 const upsertParams = (inspection: Inspection) => [
   inspection.id,
-  inspection.vehicleId,
+  inspection.voucherId,
+  inspection.unitId,
   inspection.state,
   JSON.stringify(inspection),
   inspection.updatedAt,
@@ -46,10 +48,8 @@ export function createSqliteInspectionRepository(deps: {
 }): InspectionRepository {
   const { db, changes } = deps;
   const notify = () => changes.emit(INSPECTION_TABLES);
-  const first = async (where: string, value: string) => {
-    const row = await db.first<InspectionRow>(`SELECT * FROM inspections WHERE ${where} = ?`, [
-      value,
-    ]);
+  const one = async (sql: string, params: string[]) => {
+    const row = await db.first<InspectionRow>(sql, params);
     return row ? toStored(row) : null;
   };
 
@@ -59,11 +59,15 @@ export function createSqliteInspectionRepository(deps: {
       await db.run(UPSERT, upsertParams(inspection));
       notify();
     },
-    findById: (id) => first('id', id),
-    findByVehicle: (vehicleId) => first('vehicle_id', vehicleId),
+    findById: (id) => one('SELECT * FROM unit_inspections WHERE id = ?', [id]),
+    findByUnit: (voucherId, unitId) =>
+      one('SELECT * FROM unit_inspections WHERE voucher_id = ? AND unit_id = ?', [
+        voucherId,
+        unitId,
+      ]),
     async list() {
       const rows = await db.all<InspectionRow>(
-        'SELECT * FROM inspections ORDER BY updated_at DESC',
+        'SELECT * FROM unit_inspections ORDER BY updated_at DESC',
       );
       return rows.map(toStored);
     },
@@ -71,7 +75,7 @@ export function createSqliteInspectionRepository(deps: {
       await db.transaction(async (tx) => {
         await tx.run(UPSERT, upsertParams(inspection));
         await tx.run(
-          "UPDATE inspections SET sync_status = 'pending', uploaded_photos = 0 WHERE id = ?",
+          "UPDATE unit_inspections SET sync_status = 'pending', sync_message = NULL, verdict = NULL WHERE id = ?",
           [inspection.id],
         );
         await enqueue(
@@ -87,34 +91,33 @@ export function createSqliteInspectionRepository(deps: {
       });
       changes.emit([...INSPECTION_TABLES, ...SYNC_TABLES]);
     },
-    async setUploadedPhotos(id, count) {
-      await db.run('UPDATE inspections SET uploaded_photos = ? WHERE id = ?', [count, id]);
-      notify();
-    },
-    async markSynced(id) {
-      await db.run("UPDATE inspections SET sync_status = 'synced' WHERE id = ?", [id]);
+    async markSynced(id, verdict) {
+      await db.run("UPDATE unit_inspections SET sync_status = 'synced', verdict = ? WHERE id = ?", [
+        JSON.stringify(verdict),
+        id,
+      ]);
       notify();
     },
     async markPending(id) {
       await db.run(
-        "UPDATE inspections SET sync_status = 'pending', sync_message = NULL WHERE id = ?",
+        "UPDATE unit_inspections SET sync_status = 'pending', sync_message = NULL WHERE id = ?",
         [id],
       );
       notify();
     },
     async markRejected(id, message) {
       await db.run(
-        "UPDATE inspections SET sync_status = 'rejected', sync_message = ? WHERE id = ?",
+        "UPDATE unit_inspections SET sync_status = 'rejected', sync_message = ? WHERE id = ?",
         [message, id],
       );
       notify();
     },
     async clearSynced() {
-      await db.run("DELETE FROM inspections WHERE sync_status = 'synced'");
+      await db.run("DELETE FROM unit_inspections WHERE sync_status = 'synced'");
       notify();
     },
     async delete(id) {
-      await db.run('DELETE FROM inspections WHERE id = ?', [id]);
+      await db.run('DELETE FROM unit_inspections WHERE id = ?', [id]);
       notify();
     },
   };

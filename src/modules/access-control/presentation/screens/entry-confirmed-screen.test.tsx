@@ -52,10 +52,7 @@ describe('EntryConfirmedScreen', () => {
     const { user } = await setup();
 
     await user.press(screen.getByRole('button', { name: 'Realizar inspección (opcional)' }));
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: '/inspection/[vehicleId]',
-      params: { vehicleId: 'veh-abc-123' },
-    });
+    expect(router.replace).toHaveBeenCalledWith('/inspections');
   });
 
   it('volver al inicio cierra el flujo', async () => {

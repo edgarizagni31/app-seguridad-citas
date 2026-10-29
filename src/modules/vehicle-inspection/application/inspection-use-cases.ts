@@ -1,44 +1,31 @@
 import {
   answerStep,
-  buildBoard,
+  definitionFromProtocol,
   reportPlateMismatch,
   setObservation,
   startInspection,
   submitInspection,
-  toSubmitRequest,
+  toExecuteRequest,
   type Answer,
   type CapturedPhoto,
   type Inspection,
-  type InspectionBoard,
   type InspectionCommandError,
-  type InspectionDefinition,
   type InspectionError,
+  type InspectionGateway,
   type InspectionRepository,
+  type InspectionTarget,
   type Inspector,
   type OpenInspectionError,
   type PhotoStore,
   type StoredInspection,
 } from '../domain';
-import {
-  applyEntries,
-  err,
-  findVehicle,
-  ok,
-  type Clock,
-  type EntryLog,
-  type Logger,
-  type Result,
-  type ShiftReader,
-  type ShiftSnapshot,
-  SHIFT_TABLES,
-} from '@/shared/domain';
+import { err, ok, type Clock, type Logger, type Result } from '@/shared/domain';
 
 export type InspectionDeps = {
   readonly repo: InspectionRepository;
   readonly photos: PhotoStore;
-  readonly shift: ShiftReader;
-  readonly entries: EntryLog;
-  readonly definition: InspectionDefinition;
+  readonly gateway: InspectionGateway;
+  readonly isOnline: () => Promise<boolean>;
   readonly clock: Clock;
   readonly createId: () => string;
   readonly requestSync: () => Promise<void>;
@@ -47,7 +34,11 @@ export type InspectionDeps = {
 
 type CommandResult = Promise<Result<Inspection, InspectionCommandError>>;
 
-const guard = async <T>(deps: InspectionDeps, task: () => Promise<T>, what: string) => {
+const guard = async <T>(
+  deps: Pick<InspectionDeps, 'logger'>,
+  task: () => Promise<T>,
+  what: string,
+) => {
   try {
     return ok(await task());
   } catch (cause) {
@@ -56,35 +47,35 @@ const guard = async <T>(deps: InspectionDeps, task: () => Promise<T>, what: stri
   }
 };
 
-// Retoma el borrador del vehículo o empieza uno nuevo (RF-G9)
+// Retoma el borrador local de la unidad (sin red) o descarga el protocolo y empieza uno nuevo
 export const openInspection =
   (deps: InspectionDeps) =>
   async (input: {
-    readonly vehicleId: string;
+    readonly target: InspectionTarget;
     readonly inspector: Inspector;
   }): Promise<Result<StoredInspection, OpenInspectionError>> => {
-    const baseline = await deps.shift.current();
-    if (!baseline) return err({ type: 'no-shift' });
-    const snapshot = applyEntries(baseline, await deps.entries.list());
-    const found = findVehicle(snapshot, input.vehicleId);
-    if (!found) return err({ type: 'vehicle-not-found' });
-    if (!found.vehicle.enteredAt) return err({ type: 'not-entered' });
-
-    const existing = await deps.repo.findByVehicle(input.vehicleId);
+    const { target, inspector } = input;
+    const existing = await deps.repo.findByUnit(target.voucherId, target.unitId);
     if (existing) return ok(existing);
+
+    if (!(await deps.isOnline())) return err({ type: 'offline' });
+    const protocol = await deps.gateway.getProtocol(target.voucherId, target.unitId);
+    if (!protocol.ok) return protocol;
+    const definition = definitionFromProtocol(protocol.value);
+    if (!definition.ok) return definition;
 
     const inspection = startInspection(
       {
         id: deps.createId(),
-        vehicleId: found.vehicle.id,
-        appointmentId: found.appointment.id,
-        voucherCode: found.appointment.voucherCode,
-        clientName: found.appointment.clientName,
-        plate: found.vehicle.plate,
-        inspectorId: input.inspector.id,
-        inspectorName: input.inspector.name,
+        voucherId: target.voucherId,
+        unitId: target.unitId,
+        voucherCode: target.voucherCode,
+        clientName: target.clientName,
+        plate: target.plate,
+        inspectorId: inspector.id,
+        inspectorName: inspector.name,
       },
-      deps.definition,
+      protocol.value,
       deps.clock.now(),
     );
     const saved = await guard(
@@ -93,7 +84,7 @@ export const openInspection =
       'No se pudo crear la inspección',
     );
     if (!saved.ok) return saved;
-    return ok({ ...inspection, syncStatus: null, syncMessage: null, uploadedPhotos: 0 });
+    return ok({ ...inspection, syncStatus: null, syncMessage: null, verdict: null });
   };
 
 async function load(deps: InspectionDeps, id: string) {
@@ -107,7 +98,7 @@ async function persistAnswer(
   stepId: string,
   answer: Answer,
 ): CommandResult {
-  const result = answerStep(inspection, deps.definition, stepId, answer, deps.clock.now());
+  const result = answerStep(inspection, stepId, answer, deps.clock.now());
   if (!result.ok) return result;
   const saved = await guard(
     deps,
@@ -191,7 +182,7 @@ async function close(
   if (!finished.ok) return finished;
   const saved = await guard(
     deps,
-    () => deps.repo.saveFinished(finished.value, toSubmitRequest(finished.value, deps.definition)),
+    () => deps.repo.saveFinished(finished.value, toExecuteRequest(finished.value)),
     'No se pudo cerrar la inspección',
   );
   if (!saved.ok) return saved;
@@ -201,44 +192,8 @@ async function close(
 }
 
 export const finishInspection = (deps: InspectionDeps) => (id: string) =>
-  close(deps, id, (inspection) => submitInspection(inspection, deps.definition, deps.clock.now()));
+  close(deps, id, (inspection) => submitInspection(inspection, deps.clock.now()));
 
-// La placa no coincide (RF-G1b): se registra la incidencia como inspección observada
+// La placa no coincide (RF-G1b): se envía como el control no conforme de la placa
 export const reportMismatch = (deps: InspectionDeps) => (id: string) =>
   close(deps, id, (inspection) => reportPlateMismatch(inspection, deps.clock.now()));
-
-export const loadBoard =
-  (deps: Pick<InspectionDeps, 'shift' | 'entries' | 'repo' | 'definition'>) =>
-  async (): Promise<Result<InspectionBoard, { readonly type: 'no-shift' }>> => {
-    const baseline = await deps.shift.current();
-    if (!baseline) return err({ type: 'no-shift' });
-    const snapshot = applyEntries(baseline, await deps.entries.list());
-    return ok(buildBoard(snapshot, await deps.repo.list(), deps.definition));
-  };
-
-// Tablas que cambian el tablero: paquete del día, ingresos locales e inspecciones
-export const boardTables = (deps: Pick<InspectionDeps, 'entries' | 'repo'>) => [
-  ...SHIFT_TABLES,
-  ...deps.entries.tables,
-  ...deps.repo.tables,
-];
-
-// Retención: un borrador de un vehículo que ya no está en el paquete del día no se puede retomar
-export const cleanupStaleDrafts =
-  (deps: Pick<InspectionDeps, 'repo' | 'photos' | 'logger'>) =>
-  async (snapshot: Pick<ShiftSnapshot, 'appointments'>) => {
-    const current = new Set(
-      snapshot.appointments.flatMap((appointment) =>
-        appointment.vehicles.map((vehicle) => vehicle.id),
-      ),
-    );
-    const stale = (await deps.repo.list()).filter(
-      (inspection) => inspection.state === 'draft' && !current.has(inspection.vehicleId),
-    );
-    for (const inspection of stale) {
-      await deps.photos.deleteAll(inspection.id);
-      await deps.repo.delete(inspection.id);
-    }
-    if (stale.length > 0)
-      deps.logger.info('Borradores vencidos eliminados', { count: stale.length });
-  };

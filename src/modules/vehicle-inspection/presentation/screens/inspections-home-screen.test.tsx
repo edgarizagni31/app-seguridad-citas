@@ -3,10 +3,9 @@ import { useRouter } from 'expo-router';
 
 import { useSessionStore } from '@/modules/auth';
 import { createChangeBus } from '@/shared/infrastructure/db';
-import { buildDemoSnapshot } from '@/shared/infrastructure/demo';
 import { buildSession, buildSessionUser } from '@/test/factories/auth';
 import { createFixedClock } from '@/test/fakes/fixed-clock';
-import { createMemoryInspections } from '@/test/fakes/inspections';
+import { createMemoryInspections, TEST_TARGET } from '@/test/fakes/inspections';
 import { renderWithDeps } from '@/test/render-with-deps';
 
 import { InspectionsHomeScreen } from './inspections-home-screen';
@@ -15,8 +14,10 @@ jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
 
 const NOW = new Date('2026-10-12T16:42:00Z');
 const router = { push: jest.fn() };
+const INSPECTOR = { id: 'user-ana', name: 'Ana Morales' };
+const SECOND = { ...TEST_TARGET, unitId: 'vtu-2', plate: 'XYZ-789' };
 
-async function setup() {
+async function setup({ withInspections = false } = {}) {
   jest.mocked(useRouter).mockReturnValue(router as never);
   useSessionStore.getState().setSession(
     buildSession({
@@ -24,8 +25,17 @@ async function setup() {
     }),
   );
   const changes = createChangeBus();
-  const snapshot = buildDemoSnapshot('site-central', 'Almacén Central', '2026-10-12', NOW);
-  const memory = createMemoryInspections({ changes, snapshot, now: NOW });
+  const memory = createMemoryInspections({ changes, now: NOW });
+  if (withInspections) {
+    await memory.useCases.open({ target: TEST_TARGET, inspector: INSPECTOR });
+    const closed = await memory.useCases.open({ target: SECOND, inspector: INSPECTOR });
+    if (!closed.ok) throw new Error(closed.error.type);
+    await memory.useCases.reportMismatch(closed.value.id);
+    await memory.repo.markSynced(closed.value.id, {
+      compliant: false,
+      nonCompliant: ['Placa: No coincide'],
+    });
+  }
   const user = userEvent.setup();
   await renderWithDeps(<InspectionsHomeScreen />, {
     changes,
@@ -36,57 +46,44 @@ async function setup() {
 }
 
 describe('InspectionsHomeScreen', () => {
-  it('muestra el saludo HSE, la fecha y los indicadores del día', async () => {
+  it('muestra el saludo HSE, la fecha y que aún no hay inspecciones', async () => {
     await setup();
 
-    expect(await screen.findByText('DOLLAR CITY')).toBeOnTheScreen();
+    expect(
+      await screen.findByRole('heading', { name: 'Aún no hay inspecciones' }),
+    ).toBeOnTheScreen();
     expect(screen.getByRole('heading', { name: 'Hola, Ana' })).toBeOnTheScreen();
     expect(screen.getByText('HSE')).toBeOnTheScreen();
     expect(screen.getByText('Hoy, 12 de octubre')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Pendientes: 1' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'En curso: 1' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Inspeccionados: 3' })).toBeOnTheScreen();
   });
 
-  it('agrupa los vehículos ingresados por cita y abre su inspección', async () => {
+  it('el botón principal abre el escáner del QR de la cita', async () => {
     const { user } = await setup();
 
-    await user.press(
-      await screen.findByRole('button', { name: 'MNP-456, Pendiente de inspección' }),
-    );
+    await user.press(await screen.findByRole('button', { name: 'Escanear QR de la cita' }));
+
+    expect(router.push).toHaveBeenCalledWith('/inspections/scan');
+  });
+
+  it('un borrador del teléfono vuelve al inicio de su inspección', async () => {
+    const { user } = await setup({ withInspections: true });
+
+    await user.press(await screen.findByRole('button', { name: 'ABC-123, En curso' }));
 
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/inspection/[vehicleId]',
-      params: { vehicleId: 'veh-mnp-456' },
+      pathname: '/inspection/[unitId]',
+      params: TEST_TARGET,
     });
   });
 
-  it('filtra por estado y busca por placa', async () => {
-    const { user } = await setup();
-    await screen.findByText('DOLLAR CITY');
+  it('una inspección enviada abre su resultado', async () => {
+    const { user } = await setup({ withInspections: true });
 
-    await user.press(screen.getByRole('tab', { name: 'Pendientes' }));
-    expect(screen.queryByText('PRICESMART')).not.toBeOnTheScreen();
-    expect(screen.getByText('MNP-456')).toBeOnTheScreen();
+    await user.press(await screen.findByRole('button', { name: 'XYZ-789, No conforme' }));
 
-    await user.press(screen.getByRole('tab', { name: 'Todos' }));
-    await user.type(screen.getByLabelText('Buscar por placa o voucher'), 'xyz789');
-    expect(screen.getByText('XYZ-789')).toBeOnTheScreen();
-    expect(screen.queryByText('MNP-456')).not.toBeOnTheScreen();
-  });
-
-  it('el botón de QR abre el escáner y la cita su detalle', async () => {
-    const { user } = await setup();
-
-    await user.press(screen.getByRole('button', { name: 'Escanear QR del vehículo' }));
-    expect(router.push).toHaveBeenCalledWith('/inspections/scan');
-
-    await user.press(
-      await screen.findByRole('button', { name: 'DELOSI, Voucher APPASP0000000000000093' }),
-    );
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/inspections/appointment/[appointmentId]',
-      params: { appointmentId: 'apt-delosi' },
+      pathname: '/inspection/result/[inspectionId]',
+      params: { inspectionId: 'insp-2' },
     });
   });
 });
